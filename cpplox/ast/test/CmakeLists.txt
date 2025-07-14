@@ -1,0 +1,8 @@
+add_executable(ast_test ast_test.cpp)
+
+target_include_directories(ast_test PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../..)
+target_link_libraries(ast_test PRIVATE expr scanner diagnostic Catch2::Catch2WithMain)
+
+include(CTest)
+include(Catch)
+catch_discover_tests(ast_test)
