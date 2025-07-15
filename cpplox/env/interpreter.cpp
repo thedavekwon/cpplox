@@ -4,6 +4,7 @@
 
 #include <ast/expr.h>
 #include <env/value.h>
+#include <util/scope_guard.h>
 
 namespace {
 
@@ -32,6 +33,11 @@ bool isEqual(const cpplox::Value& l, const cpplox::Value& r) {
 
 namespace cpplox {
 
+Value Interpreter::operator()(const AssignExpr& expr) {
+    Value value = evaluate(*expr.value);
+    env_->assign(expr.name, std::move(value));
+    return value;
+}
 
 Value Interpreter::operator()(const BinaryExpr& expr) {
     Value left = evaluate(*expr.left);
@@ -101,6 +107,38 @@ Value Interpreter::operator()(const UnaryExpr& expr) {
         return -std::get<double>(right);
     }
     std::unreachable();
+}
+
+Value Interpreter::operator()(const VarExpr& expr) {
+    return env_->get(expr.name);
+}
+
+void Interpreter::operator()(const BlockStatement& stmt) {
+    ScopeGuard guard{ [this, env = env_]() {
+        env_ = env;
+    } };
+
+    env_ = std::make_shared<Environment>(env_);
+    for (const Statement& statement : stmt.statements) {
+        execute(statement);
+    }
+}
+
+void Interpreter::operator()(const PrintStatement& stmt) {
+    Value value = evaluate(stmt.expr);
+    std::print("{}\n", value);
+}
+
+void Interpreter::operator()(const ExprStatement& stmt) {
+    evaluate(stmt.expr);
+}
+
+void Interpreter::operator()(const VarStatement& stmt) {
+    Value value;
+    if (stmt.initializer.has_value()) {
+        value = evaluate(*stmt.initializer);
+    }
+    env_->define(stmt.name.lexeme(), std::move(value));
 }
 
 void Interpreter::checkNumberOperands(const Token& op, const Value& operand) {

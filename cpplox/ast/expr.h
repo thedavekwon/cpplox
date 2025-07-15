@@ -8,12 +8,14 @@
 
 namespace cpplox {
 
-class BinaryExpr;
-class GroupingExpr;
-class LiteralExpr;
-class UnaryExpr;
+using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct GroupingExpr, struct LiteralExpr, struct UnaryExpr, struct VarExpr>;
 
-using Expr = std::variant<BinaryExpr, GroupingExpr, LiteralExpr, UnaryExpr>;
+struct AssignExpr {
+    Token name;
+    std::unique_ptr<Expr> value;
+
+    AssignExpr(Token n, Expr v);
+};
 
 struct BinaryExpr {
     std::unique_ptr<Expr> left;
@@ -40,6 +42,12 @@ struct UnaryExpr {
     UnaryExpr(Token o, Expr r);
 };
 
+struct VarExpr {
+    Token name;
+
+    VarExpr(Token t);
+};
+
 } // cpplox
 
 template <>
@@ -54,6 +62,19 @@ struct std::formatter<cpplox::Expr> {
         return std::visit([&](const auto& value) {
             return std::format_to(ctx.out(), "{}", value);
             }, e);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::AssignExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::AssignExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "({} = {})", e.name.lexeme(), *e.value);
     }
 };
 
@@ -114,5 +135,18 @@ struct std::formatter<cpplox::UnaryExpr> {
     template<typename FormatContext>
     auto format(const cpplox::UnaryExpr& e, FormatContext& ctx) const {
         return std::format_to(ctx.out(), "({} {})", e.op.lexeme(), *e.right);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::VarExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::VarExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "{}", e.name.lexeme());
     }
 };

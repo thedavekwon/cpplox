@@ -17,7 +17,7 @@ TEST_CASE("ParserSimple") {
     std::vector<Token> tokens = { t(TokenType::NUMBER, "1", 1.0), t(TokenType::PLUS, "+"), t(TokenType::NUMBER, "2", 2.0), t(TokenType::EOFF, "") };
 
     Parser parser(tokens, d);
-    auto expr = parser.parse();
+    auto expr = parser.parseExpr();
     REQUIRE(expr.has_value());
     const auto& binaryExpr = std::get<BinaryExpr>(*expr);
     const auto& left = std::get<LiteralExpr>(*binaryExpr.left);

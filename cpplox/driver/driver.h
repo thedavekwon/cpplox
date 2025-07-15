@@ -9,6 +9,7 @@ namespace cpplox {
 
 class InterpreterDriver {
 public:
+    void runExpr(const std::string& program);
     void run(const std::string& program);
     void runScript(const std::filesystem::path& path);
     void runPrompt();

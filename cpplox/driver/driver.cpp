@@ -18,10 +18,30 @@ void InterpreterDriver::run(const std::string& program) {
     if (diagnostic_.hadError()) {
         return;
     }
+
+    Parser parser(tokens, diagnostic_);
+    auto stmts = parser.parse();
+    if (diagnostic_.hadError() || !stmts.has_value()) {
+        return;
+    }
+
+    Interpreter interpreter(diagnostic_);
+    interpreter.interpret(*stmts);
+    if (diagnostic_.hadError()) {
+        return;
+    }
+}
+
+void InterpreterDriver::runExpr(const std::string& program) {
+    Scanner scanner(program, diagnostic_);
+    auto tokens = scanner.scanTokens();
+    if (diagnostic_.hadError()) {
+        return;
+    }
     std::print("tokens: {}\n", tokens);
 
     Parser parser(tokens, diagnostic_);
-    auto expr = parser.parse();
+    auto expr = parser.parseExpr();
     if (diagnostic_.hadError() || !expr.has_value()) {
         return;
     }
@@ -29,7 +49,7 @@ void InterpreterDriver::run(const std::string& program) {
     std::print("expression: {}\n", *expr);
 
     Interpreter interpreter(diagnostic_);
-    auto value = interpreter.interpret(*expr);
+    auto value = interpreter.interpretExpr(*expr);
     if (diagnostic_.hadError() || !expr.has_value()) {
         return;
     }

@@ -3,7 +3,21 @@
 namespace cpplox {
 
 Expr Parser::expression() {
-    return equality();
+    return assignment();
+}
+
+Expr Parser::assignment() {
+    Expr expr = equality();
+
+    if (match(TokenType::EQUAL)) {
+        Token equals = previous();
+        Expr value = assignment();
+        if (auto* var = std::get_if<VarExpr>(&expr)) {
+            return AssignExpr{ std::move(var->name), std::move(value) };
+        }
+        error(equals, "Invalid assignment target.");
+    }
+    return expr;
 }
 
 Expr Parser::equality() {
@@ -65,6 +79,10 @@ Expr Parser::primary() {
         return LiteralExpr{ previous().literal() };
     }
 
+    if (match(TokenType::IDENTIFIER)) {
+        return VarExpr(previous());
+    }
+
     if (match(TokenType::LEFT_PAREN)) {
         Expr expr = expression();
         consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
@@ -73,6 +91,61 @@ Expr Parser::primary() {
 
     error(peek(), "Expect expression.");
     throw ParserError();
+}
+
+std::optional<Statement> Parser::declaration() {
+    try {
+        if (match(TokenType::VAR)) {
+            return varDeclaration();
+        }
+        return statement();
+    } catch (const ParserError&) {
+        synchronize();
+        return std::nullopt;
+    }
+}
+
+Statement Parser::varDeclaration() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect variable name.");
+    std::optional<Expr> init;
+    if (match(TokenType::EQUAL)) {
+        init = expression();
+    }
+    consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+    return VarStatement{ std::move(name), std::move(init) };
+}
+
+Statement Parser::statement() {
+    if (match(TokenType::PRINT)) {
+        return printStatement();
+    }
+    if (match(TokenType::LEFT_BRACE)) {
+        return BlockStatement{ block() };
+    }
+    return expressionStatement();
+}
+
+Statement Parser::printStatement() {
+    Expr expr = expression();
+    consume(TokenType::SEMICOLON, "Expect ';' after value.");
+    return { PrintStatement{std::move(expr)} };
+}
+
+Statement Parser::expressionStatement() {
+    Expr expr = expression();
+    consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+    return { ExprStatement{std::move(expr)} };
+}
+
+std::vector<Statement> Parser::block() {
+    std::vector<Statement> statements;
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        if (auto decl = declaration()) {
+            statements.push_back(std::move(*decl));
+        }
+    }
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
 }
 
 

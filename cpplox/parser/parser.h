@@ -6,46 +6,63 @@
 #include <vector>
 
 #include <ast/expr.h>
+#include <ast/statement.h>
 #include <diagnostic/diagnostic.h>
 #include <scanner/token.h>
 
 namespace cpplox {
 
-// Lox grammar without precedence
-// 
-// expression -> literal | unary | binary | grouping;
-// literal    -> NUMBER | STRING | "true" | "false" | "nil";
-// grouping   -> "(" expression ")";
-// unary      -> ("-" | "!") expression;
-// binary.    -> expression operator expression;
-// operator   -> "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "/";
-
 // Lox grammar with associativity and precedence
 // 
-// expression -> equality;
-// equality   -> comparison (("!=" | "==") comparison)*;
-// comparison -> term ((">"|">="|"<"|"<=") term)*;
-// term       -> factor (("-"|"+") factor)*;
-// factor     -> factor ("/" | "*") unary | unary; // LEFT associative
-// factor     -> unary (("/" | "*") unary)*;       // RIGHT associative
-// unary      -> ("!" | "-") unary | primary;
-// primary    -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")";
+// program     -> declaration* EOF;
+//
+// declaration -> varDecl | statement;
+// 
+// varDecl     -> "var" IDENTIFIER ("=" expression)?";"; 
+//
+// statement   -> exprStmt | printStmt | block;
+// exprStmt    -> expression ";";
+// printStmt   -> "print" expression ";";
+// block       -> "{" declaration* "}";
+//
+// expression  -> assignment;
+// assignment  -> IDENTIFIER "=" assignment | equality;
+// equality    -> comparison (("!=" | "==") comparison)*;
+// comparison  -> term ((">"|">="|"<"|"<=") term)*;
+// term        -> factor (("-"|"+") factor)*;
+// factor      -> factor ("/" | "*") unary | unary; // LEFT associative
+// factor      -> unary (("/" | "*") unary)*;       // RIGHT associative
+// unary       -> ("!" | "-") unary | primary;
+// primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER;
 
 // Top-down predictive parser
 class Parser {
 public:
     Parser(const std::vector<Token>& tokens, Diagnostic& diagnostic) : tokens_(tokens), diagnostic_(diagnostic) {}
 
-    std::optional<Expr> parse() {
+    std::optional<Expr> parseExpr() {
         try {
             return expression();
-        }
-        catch (const ParserError&) {
+        } catch (const ParserError&) {
             return std::nullopt;
         }
     }
+
+    std::optional<std::vector<Statement>> parse() {
+        std::vector<Statement> statements;
+        while (!isAtEnd()) {
+            if (auto decl = declaration()) {
+                statements.push_back(std::move(*decl));
+                continue;
+            }
+        }
+        return statements;
+    }
+
 private:
+    // Parsing expressions
     Expr expression();
+    Expr assignment();
     Expr equality();
     Expr comparison();
     Expr term();
@@ -53,6 +70,15 @@ private:
     Expr unary();
     Expr primary();
 
+    // Parsing statements
+    std::optional<Statement> declaration();
+    Statement varDeclaration();
+    Statement statement();
+    Statement printStatement();
+    Statement expressionStatement();
+    std::vector<Statement> block();
+
+    // Helper functions
     template <typename... T>
     bool match(T... types) {
         static_assert(std::is_same_v<std::common_type_t<T...>, TokenType>);
