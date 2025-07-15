@@ -99,8 +99,8 @@ struct std::formatter<cpplox::VarStatement> {
     template<typename FormatContext>
     auto format(const cpplox::VarStatement& s, FormatContext& ctx) const {
         if (s.initializer.has_value()) {
-            return std::format_to(ctx.out(), "var {} = {};", s.name, *s.initializer);
+            return std::format_to(ctx.out(), "var {} = {};", s.name.lexeme(), *s.initializer);
         }
-        return std::format_to(ctx.out(), "var {};", s.name);
+        return std::format_to(ctx.out(), "var {};", s.name.lexeme());
     }
 };
