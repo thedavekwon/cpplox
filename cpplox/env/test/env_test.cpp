@@ -28,3 +28,23 @@ TEST_CASE("StringConcat") {
     REQUIRE(value.has_value());
     REQUIRE(std::get<std::string>(value.value()) == "hello world");
 }
+
+TEST_CASE("LogicalOr") {
+    Diagnostic d;
+    Interpreter interpreter{ d };
+    // "hello" + " world";
+    Expr expr{ LogicalExpr{ LiteralExpr{"hello"}, { TokenType::OR, "or", std::nullopt, 0 }, LiteralExpr{"world"} } };
+    auto value = interpreter.interpretExpr(expr);
+    REQUIRE(value.has_value());
+    REQUIRE(std::get<std::string>(value.value()) == "hello");
+}
+
+TEST_CASE("LogicalAnd") {
+    Diagnostic d;
+    Interpreter interpreter{ d };
+    // "hello" + " world";
+    Expr expr{ LogicalExpr{ LiteralExpr{"hello"}, { TokenType::AND, "and", std::nullopt, 0 }, LiteralExpr{"world"} } };
+    auto value = interpreter.interpretExpr(expr);
+    REQUIRE(value.has_value());
+    REQUIRE(std::get<std::string>(value.value()) == "world");
+}

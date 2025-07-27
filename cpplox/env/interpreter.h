@@ -38,13 +38,16 @@ public:
     Value operator()(const BinaryExpr& expr);
     Value operator()(const GroupingExpr& expr);
     Value operator()(const LiteralExpr& expr);
+    Value operator()(const LogicalExpr& expr);
     Value operator()(const UnaryExpr& expr);
     Value operator()(const VarExpr& expr);
 
     void operator()(const BlockStatement& stmt);
-    void operator()(const PrintStatement& stmt);
     void operator()(const ExprStatement& stmt);
+    void operator()(const IfStatement& stmt);
+    void operator()(const PrintStatement& stmt);
     void operator()(const VarStatement& stmt);
+    void operator()(const WhileStatement& stmt);
 
     std::optional<Value> interpretExpr(const Expr& expr) {
         try {

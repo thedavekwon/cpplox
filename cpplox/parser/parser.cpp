@@ -7,7 +7,7 @@ Expr Parser::expression() {
 }
 
 Expr Parser::assignment() {
-    Expr expr = equality();
+    Expr expr = logicalOr();
 
     if (match(TokenType::EQUAL)) {
         Token equals = previous();
@@ -16,6 +16,26 @@ Expr Parser::assignment() {
             return AssignExpr{ std::move(var->name), std::move(value) };
         }
         error(equals, "Invalid assignment target.");
+    }
+    return expr;
+}
+
+Expr Parser::logicalOr() {
+    Expr expr = logicalAnd();
+    while (match(TokenType::OR)) {
+        Token op = previous();
+        Expr right = logicalAnd();
+        expr = LogicalExpr{ std::move(expr), std::move(op), std::move(right) };
+    }
+    return expr;
+}
+
+Expr Parser::logicalAnd() {
+    Expr expr = equality();
+    while (match(TokenType::AND)) {
+        Token op = previous();
+        Expr right = equality();
+        expr = LogicalExpr{ std::move(expr), std::move(op), std::move(right) };
     }
     return expr;
 }
@@ -116,8 +136,17 @@ Statement Parser::varDeclaration() {
 }
 
 Statement Parser::statement() {
+    if (match(TokenType::FOR)) {
+        return forStatement();
+    }
+    if (match(TokenType::IF)) {
+        return ifStatement();
+    }
     if (match(TokenType::PRINT)) {
         return printStatement();
+    }
+    if (match(TokenType::WHILE)) {
+        return whileStatement();
     }
     if (match(TokenType::LEFT_BRACE)) {
         return BlockStatement{ block() };
@@ -125,16 +154,84 @@ Statement Parser::statement() {
     return expressionStatement();
 }
 
+Statement Parser::ifStatement() {
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
+    Expr condition = expression();
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after if condition.");
+    Statement thenBranch = statement();
+    if (match(TokenType::ELSE)) {
+        Statement elseBranch = statement();
+        return IfStatement{ std::move(condition), std::move(thenBranch), std::move(elseBranch) };
+    }
+    return IfStatement{ std::move(condition), std::move(thenBranch) };
+}
+
 Statement Parser::printStatement() {
     Expr expr = expression();
     consume(TokenType::SEMICOLON, "Expect ';' after value.");
-    return { PrintStatement{std::move(expr)} };
+    return PrintStatement{ std::move(expr) };
+}
+
+Statement Parser::forStatement() {
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'for'.");
+
+    // Initialzier
+    std::optional<Statement> initializer;
+    if (match(TokenType::SEMICOLON)) {
+        // No initializer
+    } else if (match(TokenType::VAR)) {
+        initializer = varDeclaration();
+    } else {
+        initializer = expressionStatement();
+    }
+
+    // Condition
+    std::optional<Expr> condition;
+    if (!check(TokenType::SEMICOLON)) {
+        condition = expression();
+    }
+    consume(TokenType::SEMICOLON, "Expect ';' after loop condition.");
+
+    // Increment
+    std::optional<Expr> increment;
+    if (!check(TokenType::RIGHT_PAREN)) {
+        increment = expression();
+    }
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    // Syntatic Sugar
+    Statement body = statement();
+
+    static_assert(std::is_nothrow_move_constructible_v<Statement>);
+
+    if (increment.has_value()) {
+        body = BlockStatement(std::move(body), ExprStatement{ std::move(*increment) });
+    }
+
+    if (!condition.has_value()) {
+        condition = LiteralExpr{ "true" };
+    }
+    body = WhileStatement{ std::move(*condition), std::move(body) };
+
+    if (initializer.has_value()) {
+        body = BlockStatement(std::move(*initializer), std::move(body));
+    }
+
+    return body;
+}
+
+Statement Parser::whileStatement() {
+    consume(TokenType::LEFT_PAREN, "Expect '(' after ')");
+    Expr condition = expression();
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after condition.");
+    Statement body = statement();
+    return WhileStatement{ std::move(condition), std::move(body) };
 }
 
 Statement Parser::expressionStatement() {
     Expr expr = expression();
     consume(TokenType::SEMICOLON, "Expect ';' after expression.");
-    return { ExprStatement{std::move(expr)} };
+    return ExprStatement{ std::move(expr) };
 }
 
 std::vector<Statement> Parser::block() {

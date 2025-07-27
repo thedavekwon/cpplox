@@ -98,6 +98,16 @@ Value Interpreter::operator()(const LiteralExpr& expr) {
     return nullptr;
 }
 
+Value Interpreter::operator()(const LogicalExpr& expr) {
+    Value left = evaluate(*expr.left);
+
+    if (expr.op.type() == TokenType::OR) {
+        if (isTruthy(left)) { return left; }
+    } else { if (!isTruthy(left)) { return left; } }
+
+    return evaluate(*expr.right);
+}
+
 Value Interpreter::operator()(const UnaryExpr& expr) {
     Value right = evaluate(*expr.right);
     if (expr.op.type() == TokenType::BANG) {
@@ -124,13 +134,21 @@ void Interpreter::operator()(const BlockStatement& stmt) {
     }
 }
 
+void Interpreter::operator()(const ExprStatement& stmt) {
+    evaluate(stmt.expr);
+}
+
+void Interpreter::operator()(const IfStatement& stmt) {
+    if (isTruthy(evaluate(stmt.condition))) {
+        execute(*stmt.thenBranch);
+    } else if (stmt.elseBranch) {
+        execute(*stmt.elseBranch);
+    }
+}
+
 void Interpreter::operator()(const PrintStatement& stmt) {
     Value value = evaluate(stmt.expr);
     std::print("{}\n", value);
-}
-
-void Interpreter::operator()(const ExprStatement& stmt) {
-    evaluate(stmt.expr);
 }
 
 void Interpreter::operator()(const VarStatement& stmt) {
@@ -139,6 +157,12 @@ void Interpreter::operator()(const VarStatement& stmt) {
         value = evaluate(*stmt.initializer);
     }
     env_->define(stmt.name.lexeme(), std::move(value));
+}
+
+void Interpreter::operator()(const WhileStatement& stmt) {
+    while (isTruthy(evaluate(stmt.condition))) {
+        execute(*stmt.body);
+    }
 }
 
 void Interpreter::checkNumberOperands(const Token& op, const Value& operand) {

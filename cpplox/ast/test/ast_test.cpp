@@ -36,4 +36,8 @@ TEST_CASE("AstPrinter Statements") {
     // var a = 5 + 5;
     Statement varStmt{ VarStatement{ Token{ TokenType::IDENTIFIER, "a", std::nullopt, 0 }, BinaryExpr{ LiteralExpr{5.0}, { TokenType::PLUS, "+", std::nullopt, 0 }, LiteralExpr{5.0} } } };
     REQUIRE(std::format("{}", varStmt) == "var a = (+ 5 5);");
+
+    // if (true) print 1; else print 2;
+    Statement ifStmt{ IfStatement{ LiteralExpr{"true"}, PrintStatement{ LiteralExpr{1.0} }, PrintStatement{ LiteralExpr{2.0} } } };
+    REQUIRE(std::format("{}", ifStmt) == "if (\"true\") print 1; else print 2;");
 }

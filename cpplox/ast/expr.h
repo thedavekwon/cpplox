@@ -8,7 +8,7 @@
 
 namespace cpplox {
 
-using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct GroupingExpr, struct LiteralExpr, struct UnaryExpr, struct VarExpr>;
+using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct GroupingExpr, struct LiteralExpr, struct LogicalExpr, struct UnaryExpr, struct VarExpr>;
 
 struct AssignExpr {
     Token name;
@@ -33,6 +33,14 @@ struct GroupingExpr {
 
 struct LiteralExpr {
     OptionalTokenLiteral value;
+};
+
+struct LogicalExpr {
+    std::unique_ptr<Expr> left;
+    Token op;
+    std::unique_ptr<Expr> right;
+
+    LogicalExpr(Expr l, Token o, Expr r);
 };
 
 struct UnaryExpr {
@@ -122,6 +130,19 @@ struct std::formatter<cpplox::LiteralExpr> {
             }
             return std::format_to(ctx.out(), "{}", value);
         }, * e.value);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::LogicalExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::LogicalExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "{} {} {}", *e.left, (e.op.type() == cpplox::TokenType::AND) ? "and" : "or", *e.right);
     }
 };
 

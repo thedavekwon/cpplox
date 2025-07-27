@@ -6,18 +6,33 @@
 
 namespace cpplox {
 
-using Statement = std::variant<struct BlockStatement, struct ExprStatement, struct PrintStatement, struct VarStatement>;
+using Statement = std::variant<struct BlockStatement, struct ExprStatement, struct IfStatement, struct PrintStatement, struct VarStatement, struct WhileStatement>;
 
 struct BlockStatement {
     std::vector<Statement> statements;
 
     BlockStatement(std::vector<Statement> s);
+    template <typename... S>
+    BlockStatement(S&&... s) {
+        static_assert(std::is_same_v<std::common_type_t<S...>, Statement>);
+        (statements.push_back(std::forward<S>(s)), ...);
+    }
 };
 
 struct ExprStatement {
     Expr expr;
 
     ExprStatement(Expr e);
+};
+
+struct IfStatement {
+    Expr condition;
+    // non-null
+    std::unique_ptr<Statement> thenBranch;
+    std::unique_ptr<Statement> elseBranch;
+
+    IfStatement(Expr c, Statement t);
+    IfStatement(Expr c, Statement t, Statement e);
 };
 
 struct PrintStatement {
@@ -31,6 +46,13 @@ struct VarStatement {
     std::optional<Expr> initializer;
 
     VarStatement(Token token, std::optional<Expr> init = std::nullopt);
+};
+
+struct WhileStatement {
+    Expr condition;
+    std::unique_ptr<Statement> body;
+
+    WhileStatement(Expr c, Statement b);
 };
 
 } // cpplox
@@ -77,6 +99,22 @@ struct std::formatter<cpplox::ExprStatement> {
 };
 
 template <>
+struct std::formatter<cpplox::IfStatement> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::IfStatement& s, FormatContext& ctx) const {
+        if (s.elseBranch) {
+            return std::format_to(ctx.out(), "if ({}) {} else {}", s.condition, *s.thenBranch, *s.elseBranch);
+        }
+        return std::format_to(ctx.out(), "if ({}) {}", s.condition, *s.thenBranch);
+    }
+};
+
+template <>
 struct std::formatter<cpplox::PrintStatement> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
@@ -102,5 +140,18 @@ struct std::formatter<cpplox::VarStatement> {
             return std::format_to(ctx.out(), "var {} = {};", s.name.lexeme(), *s.initializer);
         }
         return std::format_to(ctx.out(), "var {};", s.name.lexeme());
+    }
+};
+
+template <>
+struct std::formatter<cpplox::WhileStatement> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::WhileStatement& s, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "while ({}) {};", s.condition, *s.body);
     }
 };
