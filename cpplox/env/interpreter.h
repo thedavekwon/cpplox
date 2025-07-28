@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <format>
 #include <memory>
 #include <optional>
@@ -9,50 +10,57 @@
 #include <ast/expr.h>
 #include <ast/statement.h>
 #include <env/env.h>
-#include <env/value.h>
+#include <env/object.h>
 #include <diagnostic/diagnostic.h>
 
 namespace cpplox {
 
 // Tree-walk interpreter
 class Interpreter {
-    Value evaluate(const Expr& expr) {
+    Object evaluate(const Expr& expr) {
         return std::visit(*this, expr);
     }
 
-    void execute(const Statement& stmt) {
-        std::visit(*this, stmt);
+    std::optional<Object> execute(const Statement& stmt) {
+        return std::visit(*this, stmt);
     }
 
     void error(const Token& token, std::string_view message) {
         diagnostic_.error(token.line(), message);
     }
 
-    void checkNumberOperands(const Token& op, const Value& operand);
-    void checkNumberOperands(const Token& op, const Value& left, const Value& right);
+    void checkNumberOperands(const Token& op, const Object& operand);
+    void checkNumberOperands(const Token& op, const Object& left, const Object& right);
 
 public:
-    Interpreter(Diagnostic& diagnostic) : diagnostic_(diagnostic) {}
+    Interpreter(Diagnostic& diagnostic) : diagnostic_(diagnostic) {
+        globals_.define("clock", std::make_shared<NativeFunction>("clock", 0, [](Interpreter*, std::vector<Object>) {
+            return Object{ static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) };
+            }));
+    }
 
-    Value operator()(const AssignExpr& expr);
-    Value operator()(const BinaryExpr& expr);
-    Value operator()(const GroupingExpr& expr);
-    Value operator()(const LiteralExpr& expr);
-    Value operator()(const LogicalExpr& expr);
-    Value operator()(const UnaryExpr& expr);
-    Value operator()(const VarExpr& expr);
+    Object operator()(const AssignExpr& expr);
+    Object operator()(const BinaryExpr& expr);
+    Object operator()(const CallExpr& expr);
+    Object operator()(const GroupingExpr& expr);
+    Object operator()(const LiteralExpr& expr);
+    Object operator()(const LogicalExpr& expr);
+    Object operator()(const UnaryExpr& expr);
+    Object operator()(const VarExpr& expr);
 
-    void operator()(const BlockStatement& stmt);
-    void operator()(const ExprStatement& stmt);
-    void operator()(const IfStatement& stmt);
-    void operator()(const PrintStatement& stmt);
-    void operator()(const VarStatement& stmt);
-    void operator()(const WhileStatement& stmt);
+    std::optional<Object> operator()(const BlockStatement& stmt, EnvironmentPtr closure = nullptr);;
+    std::optional<Object> operator()(const ExprStatement& stmt);
+    std::optional<Object> operator()(const FunctionStatement& stmt);
+    std::optional<Object> operator()(const IfStatement& stmt);
+    std::optional<Object> operator()(const PrintStatement& stmt);
+    std::optional<Object> operator()(const ReturnStatement& stmt);
+    std::optional<Object> operator()(const VarStatement& stmt);
+    std::optional<Object> operator()(const WhileStatement& stmt);
 
-    std::optional<Value> interpretExpr(const Expr& expr) {
+    std::optional<Object> interpretExpr(const Expr& expr) {
         try {
-            Value value = evaluate(expr);
-            return value;
+            Object object = evaluate(expr);
+            return object;
         } catch (const RuntimeError& e) {
             return std::nullopt;
         }
@@ -70,7 +78,8 @@ public:
 
 private:
     Diagnostic& diagnostic_;
-    std::shared_ptr<Environment> env_ = std::make_shared<Environment>();
+    static Environment globals_;
+    EnvironmentPtr env_ = std::make_shared<Environment>(EnvironmentPtr(&globals_, [](Environment*) {}));
 };
 
 } // cpplox

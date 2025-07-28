@@ -16,15 +16,19 @@ namespace cpplox {
 // 
 // program     -> declaration* EOF;
 //
-// declaration -> varDecl | statement;
+// declaration -> funDecl | varDecl | statement;
 // 
+// funDecl     -> "fun" function;
+// function    -> IDENTIFIER "(" parameters? ")" block;
+// parameters  -> IDENTIFIER ("," IDENTIFIER)*;
 // varDecl     -> "var" IDENTIFIER ("=" expression)?";"; 
 //
-// statement   -> exprStmt | forStmt | ifStmt | printStmt | whileStmt | block;
+// statement   -> exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block;
 // exprStmt    -> expression ";";
 // forStmt     -> "for" "(" (varDecl | exprStmt | ";") expression? ";" expression? ")" statement;
 // ifStmt      -> "if" "(" expression ")" statement ("else" statement)?;
 // printStmt   -> "print" expression ";";
+// returnStmt  -> "return" expression? ";";
 // whileStmt   -> "while" "(" expression ")" statement;
 // block       -> "{" declaration* "}";
 //
@@ -37,7 +41,9 @@ namespace cpplox {
 // term        -> factor (("-"|"+") factor)*;
 // factor      -> factor ("/" | "*") unary | unary; // LEFT associative
 // factor      -> unary (("/" | "*") unary)*;       // RIGHT associative
-// unary       -> ("!" | "-") unary | primary;
+// unary       -> ("!" | "-") unary | call;
+// call        -> primary ("(" arguments? ")")*;
+// arguments   -> expression ("," expression)*;
 // primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER;
 
 // Top-down predictive parser
@@ -75,16 +81,21 @@ private:
     Expr term();
     Expr factor();
     Expr unary();
+    Expr call();
     Expr primary();
+
+    Expr finishCall(Expr callee);
 
     // Parsing statements
     std::optional<Statement> declaration();
+    Statement function(std::string_view kind);
     Statement varDeclaration();
     Statement statement();
     Statement ifStatement();
     Statement forStatement();
     Statement whileStatement();
     Statement printStatement();
+    Statement returnStatement();
     Statement expressionStatement();
     std::vector<Statement> block();
 

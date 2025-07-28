@@ -3,12 +3,12 @@
 #include <variant> 
 
 #include <ast/expr.h>
-#include <env/value.h>
+#include <env/object.h>
 #include <util/scope_guard.h>
 
 namespace {
 
-bool isTruthy(const cpplox::Value& value) {
+bool isTruthy(const cpplox::Object& object) {
     return std::visit([]<typename V>(const V & v) {
         if constexpr (std::is_same_v<V, std::nullptr_t>) {
             return false;
@@ -16,10 +16,10 @@ bool isTruthy(const cpplox::Value& value) {
             return v;
         }
         return true;
-    }, value);
+    }, object);
 }
 
-bool isEqual(const cpplox::Value& l, const cpplox::Value& r) {
+bool isEqual(const cpplox::Object& l, const cpplox::Object& r) {
     return std::visit([](const auto& l, const auto& r) {
         if constexpr (std::is_same_v<decltype(l), decltype(r)>) {
             return l == r;
@@ -33,20 +33,22 @@ bool isEqual(const cpplox::Value& l, const cpplox::Value& r) {
 
 namespace cpplox {
 
-Value Interpreter::operator()(const AssignExpr& expr) {
-    Value value = evaluate(*expr.value);
-    env_->assign(expr.name, std::move(value));
-    return value;
+Environment Interpreter::globals_ = {};
+
+Object Interpreter::operator()(const AssignExpr& expr) {
+    Object object = evaluate(*expr.object);
+    env_->assign(expr.name, std::move(object));
+    return object;
 }
 
-Value Interpreter::operator()(const BinaryExpr& expr) {
-    Value left = evaluate(*expr.left);
-    Value right = evaluate(*expr.right);
+Object Interpreter::operator()(const BinaryExpr& expr) {
+    Object left = evaluate(*expr.left);
+    Object right = evaluate(*expr.right);
 
     switch (expr.op.type()) {
         case TokenType::BANG_EQUAL:
             return !isEqual(left, right);
-        case TokenType::EQUAL:
+        case TokenType::EQUAL_EQUAL:
             return isEqual(left, right);
         case TokenType::GREATER:
             checkNumberOperands(expr.op, left, right);
@@ -87,19 +89,56 @@ Value Interpreter::operator()(const BinaryExpr& expr) {
     std::unreachable();
 }
 
-Value Interpreter::operator()(const GroupingExpr& expr) {
+Object Interpreter::operator()(const CallExpr& expr) {
+    Object callee = evaluate(*expr.callee);
+
+    std::vector<Object> arguments;
+    for (const Expr& argument : expr.arguments) {
+        arguments.push_back(evaluate(argument));
+    }
+
+    return std::visit([&]<typename T>(const T & v) -> Object {
+        if constexpr (std::is_same_v<T, NativeFunctionPtr>) {
+            if (arguments.size() != v->arity()) {
+                error(expr.paren, std::format("Expected {} arguments but got {}.", v->arity(), arguments.size()));
+                throw RuntimeError();
+            }
+            return v->call(this, std::move(arguments));
+        } else if constexpr (std::is_same_v<T, FunctionPtr>) {
+            if (arguments.size() != v->arity()) {
+                error(expr.paren, std::format("Expected {} arguments but got {}.", v->arity(), arguments.size()));
+                throw RuntimeError();
+            }
+            EnvironmentPtr env = std::make_shared<Environment>(v->closure_);
+            for (size_t i = 0; i < v->arity(); i++) {
+                env->define(v->declaration_.params[i].lexeme(), std::move(arguments[i]));
+            }
+            auto ret = operator()(*v->declaration_.body, env);
+            if (ret.has_value()) {
+                return ret.value();
+            }
+            return nullptr;
+        } else {
+            error(expr.paren, "Can only call functions.");
+            throw RuntimeError();
+        }
+    }, callee);
+    // Check arity
+}
+
+Object Interpreter::operator()(const GroupingExpr& expr) {
     return evaluate(*expr.expr);
 }
 
-Value Interpreter::operator()(const LiteralExpr& expr) {
-    if (expr.value.has_value()) {
-        return  std::visit([](const auto& l) {return Value{ l };}, *expr.value);
+Object Interpreter::operator()(const LiteralExpr& expr) {
+    if (expr.object.has_value()) {
+        return  std::visit([](const auto& l) {return Object{ l };}, *expr.object);
     }
     return nullptr;
 }
 
-Value Interpreter::operator()(const LogicalExpr& expr) {
-    Value left = evaluate(*expr.left);
+Object Interpreter::operator()(const LogicalExpr& expr) {
+    Object left = evaluate(*expr.left);
 
     if (expr.op.type() == TokenType::OR) {
         if (isTruthy(left)) { return left; }
@@ -108,8 +147,8 @@ Value Interpreter::operator()(const LogicalExpr& expr) {
     return evaluate(*expr.right);
 }
 
-Value Interpreter::operator()(const UnaryExpr& expr) {
-    Value right = evaluate(*expr.right);
+Object Interpreter::operator()(const UnaryExpr& expr) {
+    Object right = evaluate(*expr.right);
     if (expr.op.type() == TokenType::BANG) {
         return !isTruthy(right);
     } else if (expr.op.type() == TokenType::MINUS) {
@@ -119,53 +158,77 @@ Value Interpreter::operator()(const UnaryExpr& expr) {
     std::unreachable();
 }
 
-Value Interpreter::operator()(const VarExpr& expr) {
+Object Interpreter::operator()(const VarExpr& expr) {
     return env_->get(expr.name);
 }
 
-void Interpreter::operator()(const BlockStatement& stmt) {
-    ScopeGuard guard{ [this, env = env_]() {
-        env_ = env;
+std::optional<Object> Interpreter::operator()(const BlockStatement& stmt, EnvironmentPtr env) {
+    EnvironmentPtr blockEnvironment = env ? std::move(env) : std::make_shared<Environment>(env_);
+    ScopeGuard guard{ [this, oldEnvironment = std::exchange(env_, blockEnvironment)]() {
+        env_ = oldEnvironment;
     } };
 
-    env_ = std::make_shared<Environment>(env_);
     for (const Statement& statement : stmt.statements) {
-        execute(statement);
+        if (auto ret = execute(statement)) {
+            return ret;
+        }
     }
+    return std::nullopt;
 }
 
-void Interpreter::operator()(const ExprStatement& stmt) {
+std::optional<Object> Interpreter::operator()(const ExprStatement& stmt) {
     evaluate(stmt.expr);
+    return std::nullopt;
 }
 
-void Interpreter::operator()(const IfStatement& stmt) {
+std::optional<Object> Interpreter::operator()(const FunctionStatement& stmt) {
+    env_->define(stmt.name.lexeme(), std::make_shared<Function>(env_, stmt));
+    return std::nullopt;
+}
+
+std::optional<Object> Interpreter::operator()(const IfStatement& stmt) {
     if (isTruthy(evaluate(stmt.condition))) {
-        execute(*stmt.thenBranch);
+        return execute(*stmt.thenBranch);
     } else if (stmt.elseBranch) {
-        execute(*stmt.elseBranch);
+        return execute(*stmt.elseBranch);
     }
+    return std::nullopt;
 }
 
-void Interpreter::operator()(const PrintStatement& stmt) {
-    Value value = evaluate(stmt.expr);
-    std::print("{}\n", value);
+std::optional<Object> Interpreter::operator()(const PrintStatement& stmt) {
+    Object object = evaluate(stmt.expr);
+    std::print("{}\n", object);
+    return std::nullopt;
 }
 
-void Interpreter::operator()(const VarStatement& stmt) {
-    Value value;
+std::optional<Object> Interpreter::operator()(const ReturnStatement& stmt) {
+    std::optional<Object> value;
+    if (stmt.value.has_value()) {
+        value = evaluate(*stmt.value);
+    }
+    return value;
+}
+
+std::optional<Object> Interpreter::operator()(const VarStatement& stmt) {
+    Object object;
     if (stmt.initializer.has_value()) {
-        value = evaluate(*stmt.initializer);
+        object = evaluate(*stmt.initializer);
     }
-    env_->define(stmt.name.lexeme(), std::move(value));
+    env_->define(stmt.name.lexeme(), std::move(object));
+    return std::nullopt;
 }
 
-void Interpreter::operator()(const WhileStatement& stmt) {
+std::optional<Object> Interpreter::operator()(const WhileStatement& stmt) {
     while (isTruthy(evaluate(stmt.condition))) {
-        execute(*stmt.body);
+        auto ret = execute(*stmt.body);
+        if (ret.has_value()) {
+            return ret;
+        }
     }
+    return std::nullopt;
 }
 
-void Interpreter::checkNumberOperands(const Token& op, const Value& operand) {
+void Interpreter::checkNumberOperands(const Token& op, const Object& operand) {
     if (std::holds_alternative<double>(operand)) {
         return;
     }
@@ -173,7 +236,7 @@ void Interpreter::checkNumberOperands(const Token& op, const Value& operand) {
     throw RuntimeError();
 }
 
-void Interpreter::checkNumberOperands(const Token& op, const Value& left, const Value& right) {
+void Interpreter::checkNumberOperands(const Token& op, const Object& left, const Object& right) {
     if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
         return;
     }

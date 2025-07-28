@@ -49,11 +49,11 @@ void InterpreterDriver::runExpr(const std::string& program) {
     std::print("expression: {}\n", *expr);
 
     Interpreter interpreter(diagnostic_);
-    auto value = interpreter.interpretExpr(*expr);
+    auto object = interpreter.interpretExpr(*expr);
     if (diagnostic_.hadError() || !expr.has_value()) {
         return;
     }
-    std::print("value: {}\n", *value);
+    std::print("object: {}\n", *object);
 }
 
 void InterpreterDriver::runScript(const std::filesystem::path& path) {

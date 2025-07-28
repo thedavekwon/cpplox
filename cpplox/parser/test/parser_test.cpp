@@ -23,8 +23,8 @@ TEST_CASE("ParserSimple") {
     const auto& left = std::get<LiteralExpr>(*binaryExpr.left);
     REQUIRE(binaryExpr.op.type() == TokenType::PLUS);
     const auto& right = std::get<LiteralExpr>(*binaryExpr.right);
-    REQUIRE(std::get<double>(*left.value) == 1.0);
-    REQUIRE(std::get<double>(*right.value) == 2.0);
+    REQUIRE(std::get<double>(*left.object) == 1.0);
+    REQUIRE(std::get<double>(*right.object) == 2.0);
 }
 
 TEST_CASE("ParserLiterals") {
@@ -36,7 +36,7 @@ TEST_CASE("ParserLiterals") {
     auto expr_true = parser_true.parseExpr();
     REQUIRE(expr_true.has_value());
     const auto& lit_true = std::get<LiteralExpr>(*expr_true);
-    REQUIRE(std::get<std::string>(*lit_true.value) == "true");
+    REQUIRE(std::get<std::string>(*lit_true.object) == "true");
 
     // "a string"
     std::vector<Token> tokens_str = { t(TokenType::STRING, "\"a string\"", std::string("a string")), t(TokenType::EOFF, "") };
@@ -44,7 +44,7 @@ TEST_CASE("ParserLiterals") {
     auto expr_str = parser_str.parseExpr();
     REQUIRE(expr_str.has_value());
     const auto& lit_str = std::get<LiteralExpr>(*expr_str);
-    REQUIRE(std::get<std::string>(*lit_str.value) == "a string");
+    REQUIRE(std::get<std::string>(*lit_str.object) == "a string");
 
     // nil
     std::vector<Token> tokens_nil = { t(TokenType::NIL, "nil"), t(TokenType::EOFF, "") };
@@ -52,7 +52,7 @@ TEST_CASE("ParserLiterals") {
     auto expr_nil = parser_nil.parseExpr();
     REQUIRE(expr_nil.has_value());
     const auto& lit_nil = std::get<LiteralExpr>(*expr_nil);
-    REQUIRE(std::get<std::string>(*lit_nil.value) == "nil");
+    REQUIRE(std::get<std::string>(*lit_nil.object) == "nil");
 }
 
 TEST_CASE("ParserExpressionPrecedence") {
@@ -108,7 +108,7 @@ TEST_CASE("ParserGrouping") {
     REQUIRE(expr.has_value());
     const auto& mul_expr = std::get<BinaryExpr>(*expr);
     REQUIRE(mul_expr.op.type() == TokenType::STAR);
-    REQUIRE(std::get<double>(*std::get<LiteralExpr>(*mul_expr.left).value) == 1.0);
+    REQUIRE(std::get<double>(*std::get<LiteralExpr>(*mul_expr.left).object) == 1.0);
     const auto& group_expr = std::get<GroupingExpr>(*mul_expr.right);
     const auto& plus_expr = std::get<BinaryExpr>(*group_expr.expr);
     REQUIRE(plus_expr.op.type() == TokenType::PLUS);
@@ -134,12 +134,12 @@ TEST_CASE("ParserAssignment") {
     REQUIRE(assign_a.name.lexeme() == "a");
 
     // Right-hand side of 'a' assignment: b = 10
-    const auto& assign_b = std::get<AssignExpr>(*assign_a.value);
+    const auto& assign_b = std::get<AssignExpr>(*assign_a.object);
     REQUIRE(assign_b.name.lexeme() == "b");
 
     // Right-hand side of 'b' assignment: 10
-    const auto& literal = std::get<LiteralExpr>(*assign_b.value);
-    REQUIRE(std::get<double>(*literal.value) == 10.0);
+    const auto& literal = std::get<LiteralExpr>(*assign_b.object);
+    REQUIRE(std::get<double>(*literal.object) == 10.0);
 }
 
 TEST_CASE("ParserComplexExpressionCombination") {

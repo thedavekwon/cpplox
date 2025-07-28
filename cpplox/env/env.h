@@ -1,9 +1,10 @@
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
 #include <diagnostic/diagnostic.h>
-#include <env/value.h>
+#include <env/object.h>
 #include <scanner/token.h>
 
 namespace cpplox {
@@ -13,18 +14,19 @@ public:
     RuntimeError() : std::runtime_error("Runtime error") {}
 };
 
+using EnvironmentPtr = std::shared_ptr<class Environment>;
 class Environment {
 public:
     Environment() = default;
-    Environment(std::shared_ptr<Environment> enclosing) : enclosing_(std::move(enclosing)) {}
+    Environment(EnvironmentPtr enclosing) : enclosing_(std::move(enclosing)) {}
 
     // Allows redefinition
-    void define(std::string name, Value value) {
-        values_[std::move(name)] = std::move(value);
+    void define(std::string name, Object object) {
+        objects_[std::move(name)] = std::move(object);
     }
 
-    Value& get(const Token& name) {
-        if (auto it = values_.find(name.lexeme()); it != values_.end()) {
+    Object& get(const Token& name) {
+        if (auto it = objects_.find(name.lexeme()); it != objects_.end()) {
             return it->second;
         }
         // chain
@@ -35,14 +37,14 @@ public:
         throw RuntimeError();
     }
 
-    void assign(const Token& name, Value value) {
-        if (values_.contains(name.lexeme())) {
-            values_[name.lexeme()] = std::move(value);
+    void assign(const Token& name, Object object) {
+        if (objects_.contains(name.lexeme())) {
+            objects_[name.lexeme()] = std::move(object);
             return;
         }
         // chain
         if (enclosing_) {
-            enclosing_->assign(name, std::move(value));
+            enclosing_->assign(name, std::move(object));
             return;
         }
         diagnostic_.error(name.line(), "Undefined variable '" + name.lexeme() + "'.");
@@ -50,16 +52,16 @@ public:
     }
 
     void print() {
-        std::print("{}\n", values_);
+        std::print("{}\n", objects_);
         if (enclosing_) {
             enclosing_->print();
         }
     }
 
 private:
-    std::unordered_map<std::string, Value> values_;
+    std::unordered_map<std::string, Object> objects_;
     Diagnostic diagnostic_;
-    std::shared_ptr<Environment> enclosing_ = nullptr;
+    EnvironmentPtr enclosing_ = nullptr;
 };
 
 } // cpplox

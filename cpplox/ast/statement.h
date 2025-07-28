@@ -6,7 +6,7 @@
 
 namespace cpplox {
 
-using Statement = std::variant<struct BlockStatement, struct ExprStatement, struct IfStatement, struct PrintStatement, struct VarStatement, struct WhileStatement>;
+using Statement = std::variant<struct BlockStatement, struct ExprStatement, struct FunctionStatement, struct IfStatement, struct PrintStatement, struct ReturnStatement, struct VarStatement, struct WhileStatement>;
 
 struct BlockStatement {
     std::vector<Statement> statements;
@@ -25,6 +25,14 @@ struct ExprStatement {
     ExprStatement(Expr e);
 };
 
+struct FunctionStatement {
+    Token name;
+    std::vector<Token> params;
+    std::unique_ptr<BlockStatement> body;
+
+    FunctionStatement(Token n, std::vector<Token> p, BlockStatement b);
+};
+
 struct IfStatement {
     Expr condition;
     // non-null
@@ -39,6 +47,13 @@ struct PrintStatement {
     Expr expr;
 
     PrintStatement(Expr e);
+};
+
+struct ReturnStatement {
+    Token keyword;
+    std::optional<Expr> value;
+
+    ReturnStatement(Token keyword, std::optional<Expr> value);
 };
 
 struct VarStatement {
@@ -66,8 +81,8 @@ struct std::formatter<cpplox::Statement> {
 
     template<typename FormatContext>
     auto format(const cpplox::Statement& s, FormatContext& ctx) const {
-        return std::visit([&](const auto& value) {
-            return std::format_to(ctx.out(), "{}", value);
+        return std::visit([&](const auto& object) {
+            return std::format_to(ctx.out(), "{}", object);
             }, s);
     }
 };
@@ -81,7 +96,7 @@ struct std::formatter<cpplox::BlockStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::BlockStatement& s, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{{}};", s.statements);
+        return std::format_to(ctx.out(), "{{{}}};", s.statements);
     }
 };
 
@@ -95,6 +110,19 @@ struct std::formatter<cpplox::ExprStatement> {
     template<typename FormatContext>
     auto format(const cpplox::ExprStatement& s, FormatContext& ctx) const {
         return std::format_to(ctx.out(), "{};", s.expr);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::FunctionStatement> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::FunctionStatement& s, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "fun {}({}) {};", s.name.lexeme(), s.params, *s.body);
     }
 };
 
@@ -128,6 +156,23 @@ struct std::formatter<cpplox::PrintStatement> {
 };
 
 template <>
+struct std::formatter<cpplox::ReturnStatement> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::ReturnStatement& s, FormatContext& ctx) const {
+        if (s.value.has_value()) {
+            return std::format_to(ctx.out(), "return {};", *s.value);
+        }
+        return std::format_to(ctx.out(), "return nil;");
+    }
+};
+
+
+template <>
 struct std::formatter<cpplox::VarStatement> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
@@ -152,6 +197,6 @@ struct std::formatter<cpplox::WhileStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::WhileStatement& s, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "while ({}) {};", s.condition, *s.body);
+        return std::format_to(ctx.out(), "while ({}) {{{}}};", s.condition, *s.body);
     }
 };

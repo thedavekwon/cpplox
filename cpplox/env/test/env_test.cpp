@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <env/interpreter.h>
-#include <env/value.h>
+#include <env/object.h>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -14,9 +14,9 @@ TEST_CASE("IntegerAddition") {
     Interpreter interpreter{ d };
     // 1.0 + 2.0
     Expr expr{ BinaryExpr{ LiteralExpr{1.0}, { TokenType::PLUS, "+", std::nullopt, 0 }, LiteralExpr{2.0} } };
-    auto value = interpreter.interpretExpr(expr);
-    REQUIRE(value.has_value());
-    REQUIRE(std::get<double>(value.value()) == 3.0);
+    auto object = interpreter.interpretExpr(expr);
+    REQUIRE(object.has_value());
+    REQUIRE(std::get<double>(*object) == 3.0);
 }
 
 TEST_CASE("StringConcat") {
@@ -24,9 +24,9 @@ TEST_CASE("StringConcat") {
     Interpreter interpreter{ d };
     // "hello" + " world";
     Expr expr{ BinaryExpr{ LiteralExpr{"hello"}, { TokenType::PLUS, "+", std::nullopt, 0 }, LiteralExpr{" world"} } };
-    auto value = interpreter.interpretExpr(expr);
-    REQUIRE(value.has_value());
-    REQUIRE(std::get<std::string>(value.value()) == "hello world");
+    auto object = interpreter.interpretExpr(expr);
+    REQUIRE(object.has_value());
+    REQUIRE(std::get<std::string>(*object) == "hello world");
 }
 
 TEST_CASE("LogicalOr") {
@@ -34,9 +34,9 @@ TEST_CASE("LogicalOr") {
     Interpreter interpreter{ d };
     // "hello" + " world";
     Expr expr{ LogicalExpr{ LiteralExpr{"hello"}, { TokenType::OR, "or", std::nullopt, 0 }, LiteralExpr{"world"} } };
-    auto value = interpreter.interpretExpr(expr);
-    REQUIRE(value.has_value());
-    REQUIRE(std::get<std::string>(value.value()) == "hello");
+    auto object = interpreter.interpretExpr(expr);
+    REQUIRE(object.has_value());
+    REQUIRE(std::get<std::string>(*object) == "hello");
 }
 
 TEST_CASE("LogicalAnd") {
@@ -44,7 +44,7 @@ TEST_CASE("LogicalAnd") {
     Interpreter interpreter{ d };
     // "hello" + " world";
     Expr expr{ LogicalExpr{ LiteralExpr{"hello"}, { TokenType::AND, "and", std::nullopt, 0 }, LiteralExpr{"world"} } };
-    auto value = interpreter.interpretExpr(expr);
-    REQUIRE(value.has_value());
-    REQUIRE(std::get<std::string>(value.value()) == "world");
+    auto object = interpreter.interpretExpr(expr);
+    REQUIRE(object.has_value());
+    REQUIRE(std::get<std::string>(*object) == "world");
 }
