@@ -159,7 +159,8 @@ Object Interpreter::operator()(const UnaryExpr& expr) {
 }
 
 Object Interpreter::operator()(const VarExpr& expr) {
-    return env_->get(expr.name);
+    // return env_->get(expr.name);
+    return lookUpVariable(expr.name, expr);
 }
 
 std::optional<Object> Interpreter::operator()(const BlockStatement& stmt, EnvironmentPtr env) {

@@ -82,6 +82,10 @@ public:
         return line_;
     }
 
+    bool operator==(const Token& other) const {
+        return type_ == other.type_ && lexeme_ == other.lexeme_ && literal_ == other.literal_ && line_ == other.line_;
+    }
+
 private:
     TokenType type_;
     std::string lexeme_;
@@ -116,5 +120,12 @@ struct std::formatter<cpplox::Token> {
     template<typename FormatContext>
     auto format(const cpplox::Token& t, FormatContext& ctx) const {
         return std::format_to(ctx.out(), "{} {}", t.type(), t.lexeme());
+    }
+};
+
+template <>
+struct std::hash<cpplox::Token> {
+    size_t operator()(const cpplox::Token& t) const {
+        return std::hash<cpplox::TokenType>{}(t.type()) ^ std::hash<std::string>{}(t.lexeme()) ^ std::hash<cpplox::TokenLiteral>{}(t.literal()) ^ std::hash<int>{}(t.line());
     }
 };

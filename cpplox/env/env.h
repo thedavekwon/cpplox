@@ -15,7 +15,7 @@ public:
 };
 
 using EnvironmentPtr = std::shared_ptr<class Environment>;
-class Environment {
+class Environment : public std::enable_shared_from_this<Environment> {
 public:
     Environment() = default;
     Environment(EnvironmentPtr enclosing) : enclosing_(std::move(enclosing)) {}
@@ -35,6 +35,18 @@ public:
         }
         diagnostic_.error(name.line(), "Undefined variable '" + name.lexeme() + "'.");
         throw RuntimeError();
+    }
+
+    Object& getAt(int distance, const std::string& name) {
+        return ancestor(distance)->objects_[name];
+    }
+
+    EnvironmentPtr ancestor(int distance) {
+        EnvironmentPtr env = shared_from_this();
+        for (int i = 0; i < distance; i++) {
+            env = env->enclosing_;
+        }
+        return env;
     }
 
     void assign(const Token& name, Object object) {

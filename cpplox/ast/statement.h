@@ -12,9 +12,8 @@ struct BlockStatement {
     std::vector<Statement> statements;
 
     BlockStatement(std::vector<Statement> s);
-    template <typename... S>
+    template <typename... S> requires std::is_same_v<std::common_type_t<S...>, Statement>
     BlockStatement(S&&... s) {
-        static_assert(std::is_same_v<std::common_type_t<S...>, Statement>);
         (statements.push_back(std::forward<S>(s)), ...);
     }
 };

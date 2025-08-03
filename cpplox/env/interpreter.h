@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <print>
+#include <unordered_map>
 #include <variant>
 
 #include <ast/expr.h>
@@ -25,12 +26,15 @@ class Interpreter {
         return std::visit(*this, stmt);
     }
 
-    void error(const Token& token, std::string_view message) {
-        diagnostic_.error(token.line(), message);
-    }
-
     void checkNumberOperands(const Token& op, const Object& operand);
     void checkNumberOperands(const Token& op, const Object& left, const Object& right);
+    Object lookUpVariable(const Token& name, const Expr& expr) {
+        if (auto it = locals_.find(&expr); it != locals_.end()) {
+            return env_->getAt(it->second, name.lexeme());
+        } else {
+            return globals_.get(name);
+        }
+    }
 
 public:
     Interpreter(Diagnostic& diagnostic) : diagnostic_(diagnostic) {
@@ -76,10 +80,20 @@ public:
         }
     }
 
+    void error(const Token& token, std::string_view message) {
+        diagnostic_.error(token.line(), message);
+    }
+
+    template <typename T> requires is_contained_in_v<T, Expr>
+    void resolve(const T& expr, size_t depth) {
+        locals_[&expr] = depth;
+    }
+
 private:
     Diagnostic& diagnostic_;
     static Environment globals_;
     EnvironmentPtr env_ = std::make_shared<Environment>(EnvironmentPtr(&globals_, [](Environment*) {}));
+    std::unordered_map<const void*, size_t> locals_;
 };
 
 } // cpplox

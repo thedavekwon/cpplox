@@ -7,6 +7,7 @@
 #include <diagnostic/diagnostic.h>
 #include <driver/driver.h>
 #include <env/interpreter.h>
+#include <env/resolver.h>
 #include <parser/parser.h>
 #include <scanner/scanner.h>
 
@@ -26,6 +27,12 @@ void InterpreterDriver::run(const std::string& program) {
     }
 
     Interpreter interpreter(diagnostic_);
+    Resolver resolver(interpreter);
+    resolver.resolve(*stmts);
+    if (diagnostic_.hadError()) {
+        return;
+    }
+
     interpreter.interpret(*stmts);
     if (diagnostic_.hadError()) {
         return;
