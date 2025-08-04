@@ -95,7 +95,7 @@ struct std::formatter<cpplox::BlockStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::BlockStatement& s, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "block\n{{{}}}\nendblock\n", s.statements);
+        return std::format_to(ctx.out(), "{{{}}}", s.statements);
     }
 };
 
