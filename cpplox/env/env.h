@@ -37,13 +37,19 @@ public:
         throw RuntimeError();
     }
 
-    Object& getAt(int distance, const std::string& name) {
-        return ancestor(distance)->objects_[name];
+    Object& getAt(size_t distance, const Token& name) {
+        auto env = ancestor(distance);
+        auto& curObject = env->objects_;
+        if (auto it = curObject.find(name.lexeme()); it != curObject.end()) {
+            return it->second;
+        }
+        diagnostic_.error(name.line(), "Undefined variable '" + name.lexeme() + "'.");
+        throw RuntimeError();
     }
 
-    EnvironmentPtr ancestor(int distance) {
+    EnvironmentPtr ancestor(size_t distance) {
         EnvironmentPtr env = shared_from_this();
-        for (int i = 0; i < distance; i++) {
+        for (size_t i = 0; i < distance; i++) {
             env = env->enclosing_;
         }
         return env;
@@ -63,8 +69,11 @@ public:
         throw RuntimeError();
     }
 
+    void assignAt(size_t distance, const Token& name, Object object) {
+        ancestor(distance)->objects_[name.lexeme()] = std::move(object);
+    }
+
     void print() {
-        std::print("{}\n", objects_);
         if (enclosing_) {
             enclosing_->print();
         }

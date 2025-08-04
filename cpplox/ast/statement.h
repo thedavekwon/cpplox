@@ -64,9 +64,9 @@ struct VarStatement {
 
 struct WhileStatement {
     Expr condition;
-    std::unique_ptr<Statement> body;
+    std::unique_ptr<BlockStatement> body;
 
-    WhileStatement(Expr c, Statement b);
+    WhileStatement(Expr c, BlockStatement b);
 };
 
 } // cpplox
@@ -95,7 +95,7 @@ struct std::formatter<cpplox::BlockStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::BlockStatement& s, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{{{}}};", s.statements);
+        return std::format_to(ctx.out(), "block\n{{{}}}\nendblock\n", s.statements);
     }
 };
 
@@ -196,6 +196,6 @@ struct std::formatter<cpplox::WhileStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::WhileStatement& s, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "while ({}) {{{}}};", s.condition, *s.body);
+        return std::format_to(ctx.out(), "while ({}) {};", s.condition, *s.body);
     }
 };

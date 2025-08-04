@@ -28,9 +28,9 @@ class Interpreter {
 
     void checkNumberOperands(const Token& op, const Object& operand);
     void checkNumberOperands(const Token& op, const Object& left, const Object& right);
-    Object lookUpVariable(const Token& name, const Expr& expr) {
+    Object lookUpVariable(const Token& name, const VarExpr& expr) {
         if (auto it = locals_.find(&expr); it != locals_.end()) {
-            return env_->getAt(it->second, name.lexeme());
+            return env_->getAt(it->second, name);
         } else {
             return globals_.get(name);
         }

@@ -262,8 +262,6 @@ Statement Parser::forStatement() {
     // Syntatic Sugar
     Statement body = statement();
 
-    static_assert(std::is_nothrow_move_constructible_v<Statement>);
-
     if (increment.has_value()) {
         body = BlockStatement(std::move(body), ExprStatement{ std::move(*increment) });
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <print>
 #include <format>
 #include <memory>
 #include <variant>
@@ -189,6 +190,6 @@ struct std::formatter<cpplox::VarExpr> {
 
     template<typename FormatContext>
     auto format(const cpplox::VarExpr& e, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{}", e.name.lexeme());
+        return std::format_to(ctx.out(), "{}", e.name);
     }
 };

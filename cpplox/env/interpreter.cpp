@@ -37,7 +37,14 @@ Environment Interpreter::globals_ = {};
 
 Object Interpreter::operator()(const AssignExpr& expr) {
     Object object = evaluate(*expr.object);
-    env_->assign(expr.name, std::move(object));
+
+    if (auto it = locals_.find(&expr); it != locals_.end()) {
+        env_->assignAt(it->second, expr.name, object);
+        return object;
+    } else {
+        globals_.assign(expr.name, object);
+        return object;
+    }
     return object;
 }
 
@@ -159,12 +166,11 @@ Object Interpreter::operator()(const UnaryExpr& expr) {
 }
 
 Object Interpreter::operator()(const VarExpr& expr) {
-    // return env_->get(expr.name);
     return lookUpVariable(expr.name, expr);
 }
 
 std::optional<Object> Interpreter::operator()(const BlockStatement& stmt, EnvironmentPtr env) {
-    EnvironmentPtr blockEnvironment = env ? std::move(env) : std::make_shared<Environment>(env_);
+    EnvironmentPtr blockEnvironment = env ? std::make_shared<Environment>(env) : std::make_shared<Environment>(env_);
     ScopeGuard guard{ [this, oldEnvironment = std::exchange(env_, blockEnvironment)]() {
         env_ = oldEnvironment;
     } };
@@ -221,7 +227,7 @@ std::optional<Object> Interpreter::operator()(const VarStatement& stmt) {
 
 std::optional<Object> Interpreter::operator()(const WhileStatement& stmt) {
     while (isTruthy(evaluate(stmt.condition))) {
-        auto ret = execute(*stmt.body);
+        auto ret = operator()(*stmt.body);
         if (ret.has_value()) {
             return ret;
         }

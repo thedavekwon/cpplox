@@ -38,14 +38,14 @@ public:
     void operator()(const VarStatement& stmt);
     void operator()(const WhileStatement& stmt);
 
-    void resolve(const std::vector<Statement>& stmts);
+    void resolve(const std::vector<Statement>& stmts, bool newScope = true);
 private:
     void resolve(const Expr& expr);
     void resolve(const Statement& stmt);
 
     template <typename T> requires is_contained_in_v<T, Expr>
     void resolveLocal(const T& expr, const Token& name) {
-        for (size_t i = scopes_.size() - 1; i >= 0; i--) {
+        for (int i = scopes_.size() - 1; i >= 0; i--) {
             if (scopes_[i].contains(name.lexeme())) {
                 interpreter_.resolve(expr, scopes_.size() - 1 - i);
                 return;

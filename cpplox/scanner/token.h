@@ -1,5 +1,6 @@
 #pragma once
 
+#include <print>
 #include <format>
 #include <optional>
 #include <string>
@@ -75,8 +76,8 @@ public:
     const std::string& lexeme() const {
         return lexeme_;
     }
-    TokenLiteral literal() const {
-        return *literal_;
+    const OptionalTokenLiteral& literal() const {
+        return literal_;
     }
     int line() const {
         return line_;
@@ -119,13 +120,6 @@ struct std::formatter<cpplox::Token> {
 
     template<typename FormatContext>
     auto format(const cpplox::Token& t, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{} {}", t.type(), t.lexeme());
-    }
-};
-
-template <>
-struct std::hash<cpplox::Token> {
-    size_t operator()(const cpplox::Token& t) const {
-        return std::hash<cpplox::TokenType>{}(t.type()) ^ std::hash<std::string>{}(t.lexeme()) ^ std::hash<cpplox::TokenLiteral>{}(t.literal()) ^ std::hash<int>{}(t.line());
+        return std::format_to(ctx.out(), "{} {} {}", t.type(), t.lexeme(), t.line());
     }
 };

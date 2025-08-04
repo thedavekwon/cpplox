@@ -51,9 +51,7 @@ void Resolver::operator()(const VarExpr& expr) {
 }
 
 void Resolver::operator()(const BlockStatement& stmt) {
-    beginScope();
     resolve(stmt.statements);
-    endScope();
 }
 
 void Resolver::operator()(const ExprStatement& stmt) {
@@ -98,7 +96,7 @@ void Resolver::operator()(const VarStatement& stmt) {
 
 void Resolver::operator()(const WhileStatement& stmt) {
     resolve(stmt.condition);
-    resolve(*stmt.body);
+    resolve(stmt.body->statements);
 }
 
 void Resolver::resolve(const Expr& expr) {
@@ -109,10 +107,12 @@ void Resolver::resolve(const Statement& stmt) {
     std::visit(*this, stmt);
 }
 
-void Resolver::resolve(const std::vector<Statement>& stmts) {
+void Resolver::resolve(const std::vector<Statement>& stmts, bool newScope) {
+    if (newScope) beginScope();
     for (const auto& stmt : stmts) {
         resolve(stmt);
     }
+    if (newScope) endScope();
 }
 
 void Resolver::resolveFunction(const FunctionStatement& stmt, FunctionType funcType) {
@@ -124,7 +124,7 @@ void Resolver::resolveFunction(const FunctionStatement& stmt, FunctionType funcT
         declare(param);
         define(param);
     }
-    operator()(*stmt.body);
+    resolve(stmt.body->statements);
     endScope();
 
     currentFunction_ = enclosingFunction;

@@ -17,6 +17,6 @@ ReturnStatement::ReturnStatement(Token k, std::optional<Expr> v) : keyword(std::
 
 VarStatement::VarStatement(Token t, std::optional<Expr> i) : name(std::move(t)), initializer(std::move(i)) {}
 
-WhileStatement::WhileStatement(Expr c, Statement b) : condition(std::move(c)), body(std::make_unique<Statement>(std::move(b))) {}
+WhileStatement::WhileStatement(Expr c, BlockStatement b) : condition(std::move(c)), body(std::make_unique<BlockStatement>(std::move(b))) {}
 
 } // cpplox
