@@ -47,6 +47,16 @@ public:
         throw RuntimeError();
     }
 
+    Object& getAt(size_t distance, const std::string& name) {
+        auto env = ancestor(distance);
+        auto& curObject = env->objects_;
+        if (auto it = curObject.find(name); it != curObject.end()) {
+            return it->second;
+        }
+        diagnostic_.error(0, "Undefined variable '" + name + "'.");
+        throw RuntimeError();
+    }
+
     EnvironmentPtr ancestor(size_t distance) {
         EnvironmentPtr env = shared_from_this();
         for (size_t i = 0; i < distance; i++) {

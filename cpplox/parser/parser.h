@@ -16,8 +16,9 @@ namespace cpplox {
 // 
 // program     -> declaration* EOF;
 //
-// declaration -> funDecl | varDecl | statement;
+// declaration -> clasDecl | funDecl | varDecl | statement;
 // 
+// classDecl   -> "class" IDENTIFIER "{" function* "}";
 // funDecl     -> "fun" function;
 // function    -> IDENTIFIER "(" parameters? ")" block;
 // parameters  -> IDENTIFIER ("," IDENTIFIER)*;
@@ -33,7 +34,7 @@ namespace cpplox {
 // block       -> "{" declaration* "}";
 //
 // expression  -> assignment;
-// assignment  -> IDENTIFIER "=" assignment | logic_or;
+// assignment  -> (call ".")? IDENTIFIER "=" assignment | logic_or;
 // logic_or    -> logic_and ("or" logic_and)*;
 // logic_and   -> equality ("and" eqaulity)*;
 // equality    -> comparison (("!=" | "==") comparison)*;
@@ -42,9 +43,9 @@ namespace cpplox {
 // factor      -> factor ("/" | "*") unary | unary; // LEFT associative
 // factor      -> unary (("/" | "*") unary)*;       // RIGHT associative
 // unary       -> ("!" | "-") unary | call;
-// call        -> primary ("(" arguments? ")")*;
+// call        -> primary ("(" arguments? ")" | "."IDENTIFIER)*;
 // arguments   -> expression ("," expression)*;
-// primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER;
+// primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | this | IDENTIFIER;
 
 // Top-down predictive parser
 class Parser {
@@ -89,6 +90,7 @@ private:
     // Parsing statements
     std::optional<Statement> declaration();
     Statement function(std::string_view kind);
+    Statement classDeclaration();
     Statement varDeclaration();
     Statement statement();
     Statement ifStatement();

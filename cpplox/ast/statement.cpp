@@ -4,6 +4,8 @@ namespace cpplox {
 
 BlockStatement::BlockStatement(std::vector<Statement> s) : statements(std::move(s)) {}
 
+ClassStatement::ClassStatement(Token n, std::vector<FunctionStatement> m) : name(std::move(n)), methods(std::move(m)) {}
+
 ExprStatement::ExprStatement(Expr e) : expr(std::move(e)) {}
 
 FunctionStatement::FunctionStatement(Token n, std::vector<Token> p, BlockStatement b) : name(std::move(n)), params(std::move(p)), body(std::make_unique<BlockStatement>(std::move(b))) {}

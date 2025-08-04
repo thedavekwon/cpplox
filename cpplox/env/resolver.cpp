@@ -22,6 +22,10 @@ void Resolver::operator()(const CallExpr& expr) {
     }
 }
 
+void Resolver::operator()(const GetExpr& expr) {
+    resolve(*expr.object);
+}
+
 void Resolver::operator()(const GroupingExpr& expr) {
     resolve(*expr.expr);
 }
@@ -33,6 +37,19 @@ void Resolver::operator()(const LiteralExpr& expr) {
 void Resolver::operator()(const LogicalExpr& expr) {
     resolve(*expr.left);
     resolve(*expr.right);
+}
+
+void Resolver::operator()(const SetExpr& expr) {
+    resolve(*expr.object);
+    resolve(*expr.value);
+}
+
+void Resolver::operator()(const ThisExpr& expr) {
+    if (currentClass_ == ClassType::None) {
+        interpreter_.error(expr.keyword, "Can't use 'this' outside of a class.");
+        return;
+    }
+    resolveLocal(expr, expr.keyword);
 }
 
 void Resolver::operator()(const UnaryExpr& expr) {
@@ -52,6 +69,22 @@ void Resolver::operator()(const VarExpr& expr) {
 
 void Resolver::operator()(const BlockStatement& stmt) {
     resolve(stmt.statements);
+}
+
+void Resolver::operator()(const ClassStatement& stmt) {
+    ClassType enclosingClass = currentClass_;
+    currentClass_ = ClassType::CLASS;
+
+    declare(stmt.name);
+    define(stmt.name);
+
+    beginScope();
+    scopes_.back()["this"] = true;
+    for (const auto& method : stmt.methods) {
+        resolveFunction(method, method.name.lexeme() == "init" ? FunctionType::INITIALIZER : FunctionType::METHOD);
+    }
+    endScope();
+    currentClass_ = enclosingClass;
 }
 
 void Resolver::operator()(const ExprStatement& stmt) {
@@ -81,9 +114,15 @@ void Resolver::operator()(const ReturnStatement& stmt) {
         interpreter_.error(stmt.keyword, "Can't return from top-level code.");
     }
 
-    if (stmt.value.has_value()) {
-        resolve(*stmt.value);
+    if (!stmt.value.has_value()) {
+        return;
     }
+
+    if (currentFunction_ == FunctionType::INITIALIZER) {
+        interpreter_.error(stmt.keyword, "Can't return a value from an initializer.");
+    }
+
+    resolve(*stmt.value);
 }
 
 void Resolver::operator()(const VarStatement& stmt) {

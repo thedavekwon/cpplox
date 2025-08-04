@@ -6,7 +6,7 @@
 
 namespace cpplox {
 
-using Statement = std::variant<struct BlockStatement, struct ExprStatement, struct FunctionStatement, struct IfStatement, struct PrintStatement, struct ReturnStatement, struct VarStatement, struct WhileStatement>;
+using Statement = std::variant<struct BlockStatement, struct ClassStatement, struct ExprStatement, struct FunctionStatement, struct IfStatement, struct PrintStatement, struct ReturnStatement, struct VarStatement, struct WhileStatement>;
 
 struct BlockStatement {
     std::vector<Statement> statements;
@@ -16,6 +16,13 @@ struct BlockStatement {
     BlockStatement(S&&... s) {
         (statements.push_back(std::forward<S>(s)), ...);
     }
+};
+
+struct ClassStatement {
+    Token name;
+    std::vector<FunctionStatement> methods;
+
+    ClassStatement(Token n, std::vector<FunctionStatement> m);
 };
 
 struct ExprStatement {
@@ -96,6 +103,19 @@ struct std::formatter<cpplox::BlockStatement> {
     template<typename FormatContext>
     auto format(const cpplox::BlockStatement& s, FormatContext& ctx) const {
         return std::format_to(ctx.out(), "{{{}}}", s.statements);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::ClassStatement> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::ClassStatement& s, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "class {}", s.name.lexeme());
     }
 };
 

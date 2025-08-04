@@ -28,7 +28,8 @@ class Interpreter {
 
     void checkNumberOperands(const Token& op, const Object& operand);
     void checkNumberOperands(const Token& op, const Object& left, const Object& right);
-    Object lookUpVariable(const Token& name, const VarExpr& expr) {
+    template <typename T> requires is_contained_in_v<T, Expr>
+    Object lookUpVariable(const Token& name, const T& expr) {
         if (auto it = locals_.find(&expr); it != locals_.end()) {
             return env_->getAt(it->second, name);
         } else {
@@ -46,13 +47,17 @@ public:
     Object operator()(const AssignExpr& expr);
     Object operator()(const BinaryExpr& expr);
     Object operator()(const CallExpr& expr);
+    Object operator()(const GetExpr& expr);
     Object operator()(const GroupingExpr& expr);
     Object operator()(const LiteralExpr& expr);
     Object operator()(const LogicalExpr& expr);
+    Object operator()(const SetExpr& expr);
+    Object operator()(const ThisExpr& expr);
     Object operator()(const UnaryExpr& expr);
     Object operator()(const VarExpr& expr);
 
     std::optional<Object> operator()(const BlockStatement& stmt, EnvironmentPtr closure = nullptr);;
+    std::optional<Object> operator()(const ClassStatement& stmt);
     std::optional<Object> operator()(const ExprStatement& stmt);
     std::optional<Object> operator()(const FunctionStatement& stmt);
     std::optional<Object> operator()(const IfStatement& stmt);

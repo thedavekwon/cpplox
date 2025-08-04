@@ -8,7 +8,7 @@
 
 namespace cpplox {
 
-using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct CallExpr, struct GroupingExpr, struct LiteralExpr, struct LogicalExpr, struct UnaryExpr, struct VarExpr>;
+using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct CallExpr, struct GetExpr, struct GroupingExpr, struct LiteralExpr, struct LogicalExpr, struct SetExpr, struct ThisExpr, struct UnaryExpr, struct VarExpr>;
 
 struct AssignExpr {
     Token name;
@@ -33,6 +33,13 @@ struct CallExpr {
     CallExpr(Expr c, Token p, std::vector<Expr> a);
 };
 
+struct GetExpr {
+    std::unique_ptr<Expr> object;
+    Token name;
+
+    GetExpr(Expr o, Token n);
+};
+
 struct GroupingExpr {
     std::unique_ptr<Expr> expr;
 
@@ -49,6 +56,20 @@ struct LogicalExpr {
     std::unique_ptr<Expr> right;
 
     LogicalExpr(Expr l, Token o, Expr r);
+};
+
+struct SetExpr {
+    std::unique_ptr<Expr> object;
+    Token name;
+    std::unique_ptr<Expr> value;
+
+    SetExpr(Expr o, Token n, Expr v);
+};
+
+struct ThisExpr {
+    Token keyword;
+
+    ThisExpr(Token keyword);
 };
 
 struct UnaryExpr {
@@ -121,6 +142,19 @@ struct std::formatter<cpplox::CallExpr> {
 };
 
 template <>
+struct std::formatter<cpplox::GetExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::GetExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "{}.{}", *e.object, e.name.lexeme());
+    }
+};
+
+template <>
 struct std::formatter<cpplox::GroupingExpr> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
@@ -166,6 +200,33 @@ struct std::formatter<cpplox::LogicalExpr> {
         return std::format_to(ctx.out(), "{} {} {}", *e.left, (e.op.type() == cpplox::TokenType::AND) ? "and" : "or", *e.right);
     }
 };
+
+template <>
+struct std::formatter<cpplox::SetExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::SetExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "{}.{} = {}", *e.object, e.name.lexeme(), *e.value);
+    }
+};
+
+template <>
+struct std::formatter<cpplox::ThisExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::ThisExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "this");
+    }
+};
+
 
 template <>
 struct std::formatter<cpplox::UnaryExpr> {

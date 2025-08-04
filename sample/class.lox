@@ -1,0 +1,26 @@
+class MyClass {
+    init() {
+        this.foo = "0";
+    }
+
+    hello() {
+        return "hello";
+    }
+
+    getCallback() {
+        fun localFunction() {
+            print this;
+        }
+        return localFunction;
+    }
+}
+
+print MyClass;
+var c = MyClass();
+print c.foo;
+c.foo = "1";
+print c.foo;
+print c.hello();
+
+var callback = MyClass().getCallback();
+callback();

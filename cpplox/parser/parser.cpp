@@ -14,6 +14,8 @@ Expr Parser::assignment() {
         Expr object = assignment();
         if (auto* var = std::get_if<VarExpr>(&expr)) {
             return AssignExpr{ std::move(var->name), std::move(object) };
+        } else if (auto* var = std::get_if<GetExpr>(&expr)) {
+            return SetExpr{ std::move(*var->object), std::move(var->name), std::move(object) };
         }
         error(equals, "Invalid assignment target.");
     }
@@ -94,6 +96,9 @@ Expr Parser::call() {
     while (true) {
         if (match(TokenType::LEFT_PAREN)) {
             expr = finishCall(std::move(expr));
+        } else if (match(TokenType::DOT)) {
+            Token name = consume(TokenType::IDENTIFIER, "Expect property name after '.'.");
+            expr = GetExpr{ std::move(expr), std::move(name) };
         } else {
             break;
         }
@@ -124,6 +129,10 @@ Expr Parser::primary() {
         return LiteralExpr{ previous().literal() };
     }
 
+    if (match(TokenType::THIS)) {
+        return ThisExpr{ previous() };
+    }
+
     if (match(TokenType::IDENTIFIER)) {
         return VarExpr(previous());
     }
@@ -140,6 +149,9 @@ Expr Parser::primary() {
 
 std::optional<Statement> Parser::declaration() {
     try {
+        if (match(TokenType::CLASS)) {
+            return classDeclaration();
+        }
         if (match(TokenType::FUN)) {
             return function("function");
         }
@@ -170,6 +182,18 @@ Statement Parser::function(std::string_view kind) {
     consume(TokenType::LEFT_BRACE, std::format("Expect '{{' before {} body.", kind));
     Statement body = block();
     return FunctionStatement{ std::move(name), std::move(params), std::get<BlockStatement>(std::move(body)) };
+}
+
+Statement Parser::classDeclaration() {
+    Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+    consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
+
+    std::vector<FunctionStatement> methods;
+    while (!check(TokenType::RIGHT_BRACE) && !isAtEnd()) {
+        methods.push_back(std::get<FunctionStatement>(function("method")));
+    }
+    consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
+    return ClassStatement{ std::move(name), std::move(methods) };
 }
 
 Statement Parser::varDeclaration() {

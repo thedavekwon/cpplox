@@ -14,7 +14,14 @@ class Resolver {
 private:
     enum class FunctionType {
         None,
-        FUNCTION
+        FUNCTION,
+        METHOD,
+        INITIALIZER,
+    };
+
+    enum class ClassType {
+        None,
+        CLASS,
     };
 
 public:
@@ -23,13 +30,17 @@ public:
     void operator()(const AssignExpr& expr);
     void operator()(const BinaryExpr& expr);
     void operator()(const CallExpr& expr);
+    void operator()(const GetExpr& expr);
     void operator()(const GroupingExpr& expr);
     void operator()(const LiteralExpr& expr);
     void operator()(const LogicalExpr& expr);
+    void operator()(const SetExpr& expr);
+    void operator()(const ThisExpr& expr);
     void operator()(const UnaryExpr& expr);
     void operator()(const VarExpr& expr);
 
     void operator()(const BlockStatement& stmt);
+    void operator()(const ClassStatement& stmt);
     void operator()(const ExprStatement& stmt);
     void operator()(const FunctionStatement& stmt);
     void operator()(const IfStatement& stmt);
@@ -63,6 +74,7 @@ private:
 
     std::vector<std::unordered_map<std::string, bool>> scopes_;
     FunctionType currentFunction_ = FunctionType::None;
+    ClassType currentClass_ = ClassType::None;
     Interpreter& interpreter_;
 };
 
