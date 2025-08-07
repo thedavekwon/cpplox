@@ -6,8 +6,10 @@ Object NativeFunction::call(Interpreter* i, std::vector<Object> arguments) {
     return call_(i, std::move(arguments));
 }
 
-Object Class::call(Interpreter* i, std::vector<Object> arguments) {
-    return std::make_shared<Instance>(shared_from_this());
+FunctionPtr Function::bind(InstancePtr instance) {
+    EnvironmentPtr env = std::make_shared<Environment>(closure_);
+    env->define("this", instance);
+    return std::make_shared<Function>(env, declaration_, isInit_);
 }
 
 size_t Class::arity() const {

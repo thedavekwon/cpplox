@@ -24,6 +24,22 @@ class Function {
 public:
     Function(EnvironmentPtr closure, const FunctionStatement& declaration, bool isInit) : closure_(std::move(closure)), declaration_(declaration), isInit_(isInit) {}
     size_t arity() const { return declaration_.params.size(); }
+    template <typename T> requires std::is_same_v<T, Interpreter>
+    Object call(T* i, std::vector<Object> arguments) {
+        EnvironmentPtr env = std::make_shared<Environment>(closure_);
+        for (size_t i = 0; i < arity(); i++) {
+            env->define(declaration_.params[i].lexeme(), std::move(arguments[i]));
+        }
+        auto ret = i->operator()(*declaration_.body, env);
+        if (isInit_) {
+            return closure_->getAt(0, "this");
+        }
+        if (ret.has_value()) {
+            return ret.value();
+        }
+        return nullptr;
+    }
+    FunctionPtr bind(InstancePtr instance);
 
 private:
     EnvironmentPtr closure_;
@@ -32,6 +48,7 @@ private:
 
     friend std::formatter<Function>;
     friend Interpreter;
+    friend Class;
 };
 
 class NativeFunction {
@@ -51,7 +68,15 @@ class Class : public std::enable_shared_from_this<Class> {
 public:
     Class(std::string name, std::unordered_map<std::string, FunctionPtr> methods) : name_(std::move(name)), methods_(std::move(methods)) {}
 
-    Object call(Interpreter* i, std::vector<Object> arguments);
+    template <typename T> requires std::is_same_v<T, Interpreter>
+    Object call(T* i, std::vector<Object> arguments) {
+        auto instance = std::make_shared<Instance>(shared_from_this());
+        auto init = findMethod("init");
+        if (init) {
+            init->bind(instance)->call(i, std::move(arguments));
+        }
+        return instance;
+    }
     size_t arity() const;
     FunctionPtr findMethod(const std::string& name) {
         if (auto it = methods_.find(name); it != methods_.end()) {
@@ -78,7 +103,7 @@ public:
         }
 
         if (auto it = class_->methods_.find(name.lexeme()); it != class_->methods_.end()) {
-            return it->second;
+            return it->second->bind(shared_from_this());
         }
 
         return std::nullopt;

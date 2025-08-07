@@ -111,49 +111,13 @@ Object Interpreter::operator()(const CallExpr& expr) {
         arguments.push_back(evaluate(argument));
     }
 
-    // TODO: Clean up cyclic mess
     return std::visit([&]<typename T>(const T & v) -> Object {
-        if constexpr (std::is_same_v<T, NativeFunctionPtr>) {
+        if constexpr (is_callable_v<T>) {
             if (arguments.size() != v->arity()) {
                 error(expr.paren, std::format("Expected {} arguments but got {}.", v->arity(), arguments.size()));
                 throw RuntimeError();
             }
             return v->call(this, std::move(arguments));
-        } else if constexpr (std::is_same_v<T, FunctionPtr>) {
-            if (arguments.size() != v->arity()) {
-                error(expr.paren, std::format("Expected {} arguments but got {}.", v->arity(), arguments.size()));
-                throw RuntimeError();
-            }
-            EnvironmentPtr env = std::make_shared<Environment>(v->closure_);
-            for (size_t i = 0; i < v->arity(); i++) {
-                env->define(v->declaration_.params[i].lexeme(), std::move(arguments[i]));
-            }
-            auto ret = operator()(*v->declaration_.body, env);
-            if (v->isInit_) {
-                return v->closure_->getAt(0, "this");
-            }
-            if (ret.has_value()) {
-                return ret.value();
-            }
-            return nullptr;
-        } else if constexpr (std::is_same_v<T, ClassPtr>) {
-            if (arguments.size() != v->arity()) {
-                error(expr.paren, std::format("Expected {} arguments but got {}.", v->arity(), arguments.size()));
-                throw RuntimeError();
-            }
-            auto instance = std::make_shared<Instance>(v);
-            auto init = v->findMethod("init");
-            if (init) {
-                EnvironmentPtr env = std::make_shared<Environment>(init->closure_);
-                env->define("this", instance);
-                auto bound_init = std::make_shared<Function>(env, init->declaration_, true);
-                env = std::make_shared<Environment>(bound_init->closure_);
-                for (size_t i = 0; i < bound_init->arity(); i++) {
-                    env->define(bound_init->declaration_.params[i].lexeme(), std::move(arguments[i]));
-                }
-                operator()(*bound_init->declaration_.body, env);
-            }
-            return instance;
         } else {
             error(expr.paren, "Can only call functions.");
             throw RuntimeError();
@@ -168,12 +132,6 @@ Object Interpreter::operator()(const GetExpr& expr) {
         auto instance = std::get<InstancePtr>(object);
         auto ret = instance->get(expr.name);
         if (ret.has_value()) {
-            if (std::holds_alternative<FunctionPtr>(ret.value())) {
-                auto func = std::get<FunctionPtr>(ret.value());
-                EnvironmentPtr env = std::make_shared<Environment>(func->closure_);
-                env->define("this", instance);
-                return std::make_shared<Function>(env, func->declaration_, func->isInit_);
-            }
             return ret.value();
         }
         error(expr.name, "Undefined property '" + expr.name.lexeme() + "'.");
