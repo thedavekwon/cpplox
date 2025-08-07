@@ -39,6 +39,7 @@ FetchContent_MakeAvailable(magic_enum)
 
 if(CPPLOX_BUILD_TESTS)
     enable_testing()
+    add_subdirectory(cpplox/driver/test)
     add_subdirectory(cpplox/scanner/test)
     # add_subdirectory(cpplox/ast/test)
     add_subdirectory(cpplox/parser/test)

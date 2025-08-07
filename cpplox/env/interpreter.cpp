@@ -1,6 +1,7 @@
 #include <env/interpreter.h>
 
-#include <variant> 
+#include <variant>
+#include <print>
 
 #include <ast/expr.h>
 #include <env/object.h>
@@ -34,6 +35,12 @@ bool isEqual(const cpplox::Object& l, const cpplox::Object& r) {
 namespace cpplox {
 
 Environment Interpreter::globals_ = {};
+
+Interpreter::Interpreter(Diagnostic& diagnostic, std::ostream& out) : diagnostic_(diagnostic), out_(out) {
+    globals_.define("clock", std::make_shared<NativeFunction>("clock", 0, [](Interpreter*, std::vector<Object>) {
+        return Object{ static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) };
+        }));
+}
 
 Object Interpreter::operator()(const AssignExpr& expr) {
     Object object = evaluate(*expr.object);
@@ -275,7 +282,7 @@ std::optional<Object> Interpreter::operator()(const IfStatement& stmt) {
 
 std::optional<Object> Interpreter::operator()(const PrintStatement& stmt) {
     Object object = evaluate(stmt.expr);
-    std::print("{}\n", object);
+    std::print(out_, "{}\n", object);
     return std::nullopt;
 }
 

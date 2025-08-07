@@ -13,6 +13,8 @@
 
 namespace cpplox {
 
+InterpreterDriver::InterpreterDriver(std::ostream& out) : out_(out) {}
+
 void InterpreterDriver::run(const std::string& program) {
     Scanner scanner(program, diagnostic_);
     auto tokens = scanner.scanTokens();
@@ -26,7 +28,7 @@ void InterpreterDriver::run(const std::string& program) {
         return;
     }
 
-    Interpreter interpreter(diagnostic_);
+    Interpreter interpreter(diagnostic_, out_);
     Resolver resolver(interpreter);
     resolver.resolve(*stmts);
     if (diagnostic_.hadError()) {
@@ -45,7 +47,7 @@ void InterpreterDriver::runExpr(const std::string& program) {
     if (diagnostic_.hadError()) {
         return;
     }
-    std::print("tokens: {}\n", tokens);
+    std::print(out_, "tokens: {}\n", tokens);
 
     Parser parser(tokens, diagnostic_);
     auto expr = parser.parseExpr();
@@ -53,14 +55,14 @@ void InterpreterDriver::runExpr(const std::string& program) {
         return;
     }
 
-    std::print("expression: {}\n", *expr);
+    std::print(out_, "expression: {}\n", *expr);
 
-    Interpreter interpreter(diagnostic_);
+    Interpreter interpreter(diagnostic_, out_);
     auto object = interpreter.interpretExpr(*expr);
     if (diagnostic_.hadError() || !expr.has_value()) {
         return;
     }
-    std::print("object: {}\n", *object);
+    std::print(out_, "object: {}\n", *object);
 }
 
 void InterpreterDriver::runScript(const std::filesystem::path& path) {
@@ -78,7 +80,7 @@ void InterpreterDriver::runScript(const std::filesystem::path& path) {
 void InterpreterDriver::runPrompt() {
     std::string line;
     while (true) {
-        std::print("> ");
+        std::print(out_, "> ");
         if (!std::getline(std::cin, line)) break;
         run(line);
         diagnostic_.reset();
@@ -86,3 +88,4 @@ void InterpreterDriver::runPrompt() {
 }
 
 } // cpplox
+

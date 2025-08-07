@@ -5,6 +5,7 @@
 
 #include <ast/expr.h>
 #include <ast/statement.h>
+#include <env/fwd.h>
 #include <env/interpreter.h>
 #include <util/traits.h>
 

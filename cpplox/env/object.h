@@ -4,20 +4,13 @@
 #include <string>
 #include <variant>
 
+
+#include <env/env.h>
+#include <env/fwd.h>
 #include <ast/statement.h>
 #include <util/traits.h>
 
 namespace cpplox {
-
-class Interpreter;
-
-using EnvironmentPtr = std::shared_ptr<class Environment>;
-using FunctionPtr = std::shared_ptr<class Function>;
-using NativeFunctionPtr = std::shared_ptr<class NativeFunction>;
-using ClassPtr = std::shared_ptr<class Class>;
-using InstancePtr = std::shared_ptr<class Instance>;
-
-using Object = std::variant<std::nullptr_t, bool, double, std::string, FunctionPtr, NativeFunctionPtr, ClassPtr, InstancePtr>;
 
 template <typename T, typename = void>
 constexpr bool is_callable_v = false;

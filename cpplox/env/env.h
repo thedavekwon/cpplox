@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include <diagnostic/diagnostic.h>
-#include <env/object.h>
+#include <env/fwd.h>
 #include <scanner/token.h>
 
 namespace cpplox {
@@ -14,7 +14,6 @@ public:
     RuntimeError() : std::runtime_error("Runtime error") {}
 };
 
-using EnvironmentPtr = std::shared_ptr<class Environment>;
 class Environment : public std::enable_shared_from_this<Environment> {
 public:
     Environment() = default;

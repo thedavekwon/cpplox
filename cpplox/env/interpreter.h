@@ -7,10 +7,12 @@
 #include <print>
 #include <unordered_map>
 #include <variant>
+#include <iostream>
 
 #include <ast/expr.h>
 #include <ast/statement.h>
 #include <env/env.h>
+#include <env/fwd.h>
 #include <env/object.h>
 #include <diagnostic/diagnostic.h>
 
@@ -38,11 +40,7 @@ class Interpreter {
     }
 
 public:
-    Interpreter(Diagnostic& diagnostic) : diagnostic_(diagnostic) {
-        globals_.define("clock", std::make_shared<NativeFunction>("clock", 0, [](Interpreter*, std::vector<Object>) {
-            return Object{ static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) };
-            }));
-    }
+    Interpreter(Diagnostic& diagnostic, std::ostream& out = std::cout);
 
     Object operator()(const AssignExpr& expr);
     Object operator()(const BinaryExpr& expr);
@@ -96,6 +94,7 @@ public:
 
 private:
     Diagnostic& diagnostic_;
+    std::ostream& out_;
     static Environment globals_;
     EnvironmentPtr env_ = std::make_shared<Environment>(EnvironmentPtr(&globals_, [](Environment*) {}));
     std::unordered_map<const void*, size_t> locals_;
