@@ -53,6 +53,9 @@ public:
     void operator()(const WhileStatement& stmt);
 
     void resolve(const std::vector<Statement>& stmts, bool newScope = true);
+
+    void beginScope();
+    void endScope();
 private:
     void resolve(const Expr& expr);
     void resolve(const Statement& stmt);
@@ -68,10 +71,6 @@ private:
     }
 
     void resolveFunction(const FunctionStatement& stmt, FunctionType funcType);
-
-    void scopeGuard();
-    void beginScope();
-    void endScope();
 
     void declare(const Token& name);
     void define(const Token& name);

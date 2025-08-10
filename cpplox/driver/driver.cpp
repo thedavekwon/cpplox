@@ -78,13 +78,39 @@ void InterpreterDriver::runScript(const std::filesystem::path& path) {
 }
 
 void InterpreterDriver::runPrompt() {
+    Interpreter interpreter(diagnostic_, out_);
+    Resolver resolver(interpreter);
+    resolver.beginScope();
     std::string line;
     while (true) {
         std::print(out_, "> ");
         if (!std::getline(std::cin, line)) break;
-        run(line);
+
+        Scanner scanner(line, diagnostic_);
+        auto tokens = scanner.scanTokens();
+        if (diagnostic_.hadError()) {
+            return;
+        }
+
+        Parser parser(tokens, diagnostic_);
+        auto stmts = parser.parse();
+        if (diagnostic_.hadError() || !stmts.has_value()) {
+            return;
+        }
+
+        resolver.resolve(*stmts, false);
+        if (diagnostic_.hadError()) {
+            return;
+        }
+
+        interpreter.interpret(*stmts);
+        if (diagnostic_.hadError()) {
+            return;
+        }
+
         diagnostic_.reset();
     }
+    resolver.endScope();
 }
 
 } // cpplox
