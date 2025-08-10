@@ -1,6 +1,7 @@
 #include <variant>
 
 #include <env/resolver.h>
+#include <util/scope_guard.h>
 
 namespace cpplox {
 
@@ -44,6 +45,15 @@ void Resolver::operator()(const SetExpr& expr) {
     resolve(*expr.value);
 }
 
+void Resolver::operator()(const SuperExpr& expr) {
+    if (currentClass_ == ClassType::None) {
+        interpreter_.error(expr.keyword, "Can't use 'super' outside of a class.");
+    } else if (currentClass_ != ClassType::SUBCLASS) {
+        interpreter_.error(expr.keyword, "Can't use 'super' in a class with no superclass.");
+    }
+    resolveLocal(expr, expr.keyword);
+}
+
 void Resolver::operator()(const ThisExpr& expr) {
     if (currentClass_ == ClassType::None) {
         interpreter_.error(expr.keyword, "Can't use 'this' outside of a class.");
@@ -72,11 +82,23 @@ void Resolver::operator()(const BlockStatement& stmt) {
 }
 
 void Resolver::operator()(const ClassStatement& stmt) {
-    ClassType enclosingClass = currentClass_;
-    currentClass_ = ClassType::CLASS;
+    ScopeGuard guard{ [this, enclosingClass = std::exchange(currentClass_, ClassType::CLASS)]() {
+        currentClass_ = enclosingClass;
+    } };
 
     declare(stmt.name);
     define(stmt.name);
+
+    if (stmt.superclass.has_value()) {
+        if (stmt.superclass->name.lexeme() == stmt.name.lexeme()) {
+            interpreter_.error(stmt.superclass->name, "A class can't inherit from itself.");
+        }
+        currentClass_ = ClassType::SUBCLASS;
+        operator()(*stmt.superclass);
+
+        beginScope();
+        scopes_.back()["super"] = true;
+    }
 
     beginScope();
     scopes_.back()["this"] = true;
@@ -84,7 +106,10 @@ void Resolver::operator()(const ClassStatement& stmt) {
         resolveFunction(method, method.name.lexeme() == "init" ? FunctionType::INITIALIZER : FunctionType::METHOD);
     }
     endScope();
-    currentClass_ = enclosingClass;
+
+    if (stmt.superclass.has_value()) {
+        endScope();
+    }
 }
 
 void Resolver::operator()(const ExprStatement& stmt) {
@@ -155,8 +180,9 @@ void Resolver::resolve(const std::vector<Statement>& stmts, bool newScope) {
 }
 
 void Resolver::resolveFunction(const FunctionStatement& stmt, FunctionType funcType) {
-    FunctionType enclosingFunction = currentFunction_;
-    currentFunction_ = funcType;
+    ScopeGuard guard{ [this, enclosingFunction = std::exchange(currentFunction_, funcType)]() {
+        currentFunction_ = enclosingFunction;
+    } };
 
     beginScope();
     for (const auto& param : stmt.params) {
@@ -165,8 +191,6 @@ void Resolver::resolveFunction(const FunctionStatement& stmt, FunctionType funcT
     }
     resolve(stmt.body->statements);
     endScope();
-
-    currentFunction_ = enclosingFunction;
 }
 
 void Resolver::beginScope() {

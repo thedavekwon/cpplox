@@ -66,7 +66,7 @@ private:
 
 class Class : public std::enable_shared_from_this<Class> {
 public:
-    Class(std::string name, std::unordered_map<std::string, FunctionPtr> methods) : name_(std::move(name)), methods_(std::move(methods)) {}
+    Class(std::string name, std::unordered_map<std::string, FunctionPtr> methods, ClassPtr superclass = nullptr) : name_(std::move(name)), methods_(std::move(methods)), superclass_(std::move(superclass)) {}
 
     template <typename T> requires std::is_same_v<T, Interpreter>
     Object call(T* i, std::vector<Object> arguments) {
@@ -82,12 +82,18 @@ public:
         if (auto it = methods_.find(name); it != methods_.end()) {
             return it->second;
         }
+
+        if (superclass_) {
+            return superclass_->findMethod(name);
+        }
+
         return nullptr;
     }
 
 private:
     std::string name_;
     std::unordered_map<std::string, FunctionPtr> methods_;
+    ClassPtr superclass_;
     friend Instance;
     friend Interpreter;
     friend std::formatter<Class>;
@@ -102,8 +108,9 @@ public:
             return it->second;
         }
 
-        if (auto it = class_->methods_.find(name.lexeme()); it != class_->methods_.end()) {
-            return it->second->bind(shared_from_this());
+        auto func = class_->findMethod(name.lexeme());
+        if (func) {
+            return func->bind(shared_from_this());
         }
 
         return std::nullopt;

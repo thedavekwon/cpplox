@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <variant>
 
 #include <ast/expr.h>
@@ -21,8 +22,9 @@ struct BlockStatement {
 struct ClassStatement {
     Token name;
     std::vector<FunctionStatement> methods;
+    std::optional<VarExpr> superclass;
 
-    ClassStatement(Token n, std::vector<FunctionStatement> m);
+    ClassStatement(Token n, std::vector<FunctionStatement> m, std::optional<VarExpr> s);
 };
 
 struct ExprStatement {
@@ -115,6 +117,9 @@ struct std::formatter<cpplox::ClassStatement> {
 
     template<typename FormatContext>
     auto format(const cpplox::ClassStatement& s, FormatContext& ctx) const {
+        if (s.superclass.has_value()) {
+            return std::format_to(ctx.out(), "class {} < {}", s.name.lexeme(), s.superclass->name.lexeme());
+        }
         return std::format_to(ctx.out(), "class {}", s.name.lexeme());
     }
 };

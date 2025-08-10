@@ -129,6 +129,13 @@ Expr Parser::primary() {
         return LiteralExpr{ previous().literal() };
     }
 
+    if (match(TokenType::SUPER)) {
+        Token keyword = previous();
+        consume(TokenType::DOT, "Expect '.' after 'super'.");
+        Token method = consume(TokenType::IDENTIFIER, "Expect superclass method name.");
+        return SuperExpr{ std::move(keyword), std::move(method) };
+    }
+
     if (match(TokenType::THIS)) {
         return ThisExpr{ previous() };
     }
@@ -186,6 +193,13 @@ Statement Parser::function(std::string_view kind) {
 
 Statement Parser::classDeclaration() {
     Token name = consume(TokenType::IDENTIFIER, "Expect class name.");
+
+    std::optional<VarExpr> superclass;
+    if (match(TokenType::LESS)) {
+        consume(TokenType::IDENTIFIER, "Expect superclass name.");
+        superclass = VarExpr(previous());
+    }
+
     consume(TokenType::LEFT_BRACE, "Expect '{' before class body.");
 
     std::vector<FunctionStatement> methods;
@@ -193,7 +207,7 @@ Statement Parser::classDeclaration() {
         methods.push_back(std::get<FunctionStatement>(function("method")));
     }
     consume(TokenType::RIGHT_BRACE, "Expect '}' after class body.");
-    return ClassStatement{ std::move(name), std::move(methods) };
+    return ClassStatement{ std::move(name), std::move(methods), std::move(superclass) };
 }
 
 Statement Parser::varDeclaration() {

@@ -50,6 +50,7 @@ public:
     Object operator()(const LiteralExpr& expr);
     Object operator()(const LogicalExpr& expr);
     Object operator()(const SetExpr& expr);
+    Object operator()(const SuperExpr& expr);
     Object operator()(const ThisExpr& expr);
     Object operator()(const UnaryExpr& expr);
     Object operator()(const VarExpr& expr);

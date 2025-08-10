@@ -88,6 +88,10 @@ public:
         }
     }
 
+    EnvironmentPtr enclosing() {
+        return enclosing_;
+    }
+
 private:
     std::unordered_map<std::string, Object> objects_;
     Diagnostic diagnostic_;

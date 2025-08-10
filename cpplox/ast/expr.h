@@ -8,7 +8,7 @@
 
 namespace cpplox {
 
-using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct CallExpr, struct GetExpr, struct GroupingExpr, struct LiteralExpr, struct LogicalExpr, struct SetExpr, struct ThisExpr, struct UnaryExpr, struct VarExpr>;
+using Expr = std::variant<struct AssignExpr, struct BinaryExpr, struct CallExpr, struct GetExpr, struct GroupingExpr, struct LiteralExpr, struct LogicalExpr, struct SetExpr, struct SuperExpr, struct ThisExpr, struct UnaryExpr, struct VarExpr>;
 
 struct AssignExpr {
     Token name;
@@ -64,6 +64,13 @@ struct SetExpr {
     std::unique_ptr<Expr> value;
 
     SetExpr(Expr o, Token n, Expr v);
+};
+
+struct SuperExpr {
+    Token keyword;
+    Token method;
+
+    SuperExpr(Token k, Token m);
 };
 
 struct ThisExpr {
@@ -215,6 +222,19 @@ struct std::formatter<cpplox::SetExpr> {
 };
 
 template <>
+struct std::formatter<cpplox::SuperExpr> {
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const cpplox::SuperExpr& e, FormatContext& ctx) const {
+        return std::format_to(ctx.out(), "super.{}", e.method);
+    }
+};
+
+template <>
 struct std::formatter<cpplox::ThisExpr> {
     template<typename ParseContext>
     constexpr auto parse(ParseContext& ctx) {
@@ -250,6 +270,6 @@ struct std::formatter<cpplox::VarExpr> {
 
     template<typename FormatContext>
     auto format(const cpplox::VarExpr& e, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{}", e.name.lexeme());
+        return std::format_to(ctx.out(), "{} {}", e.name.lexeme(), e.name.line());
     }
 };

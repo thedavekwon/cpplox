@@ -4,7 +4,7 @@ namespace cpplox {
 
 BlockStatement::BlockStatement(std::vector<Statement> s) : statements(std::move(s)) {}
 
-ClassStatement::ClassStatement(Token n, std::vector<FunctionStatement> m) : name(std::move(n)), methods(std::move(m)) {}
+ClassStatement::ClassStatement(Token n, std::vector<FunctionStatement> m, std::optional<VarExpr> s) : name(std::move(n)), methods(std::move(m)), superclass(std::move(s)) {}
 
 ExprStatement::ExprStatement(Expr e) : expr(std::move(e)) {}
 

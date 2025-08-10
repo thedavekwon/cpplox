@@ -174,6 +174,18 @@ Object Interpreter::operator()(const SetExpr& expr) {
     throw RuntimeError();
 }
 
+Object Interpreter::operator()(const SuperExpr& expr) {
+    auto distance = locals_[&expr];
+    auto superclass = env_->getAt(distance, "super");
+    auto instance = env_->getAt(distance - 1, "this");
+    auto method = std::get<ClassPtr>(superclass)->findMethod(expr.method.lexeme());
+    if (!method) {
+        error(expr.method, "Undefined property '" + expr.method.lexeme() + "'.");
+        throw RuntimeError();
+    }
+    return method->bind(std::get<InstancePtr>(instance));
+}
+
 Object Interpreter::operator()(const ThisExpr& expr) {
     return lookUpVariable(expr.keyword, expr);
 }
@@ -208,13 +220,32 @@ std::optional<Object> Interpreter::operator()(const BlockStatement& stmt, Enviro
 }
 
 std::optional<Object> Interpreter::operator()(const ClassStatement& stmt) {
+    std::optional<Object> superclass;
+    if (stmt.superclass.has_value()) {
+        superclass = operator()(*stmt.superclass);
+        if (!std::holds_alternative<ClassPtr>(*superclass)) {
+            error(stmt.superclass->name, "Superclass must be a class.");
+            throw RuntimeError();
+        }
+    }
     env_->define(stmt.name.lexeme(), {});
+
+    if (superclass.has_value()) {
+        env_ = std::make_shared<Environment>(env_);
+        env_->define("super", std::get<ClassPtr>(*superclass));
+    }
 
     std::unordered_map<std::string, FunctionPtr> methods;
     for (const FunctionStatement& method : stmt.methods) {
         methods[method.name.lexeme()] = std::make_shared<Function>(env_, method, method.name.lexeme() == "init");
     }
 
+    if (superclass.has_value()) {
+        auto klass = std::make_shared<Class>(stmt.name.lexeme(), std::move(methods), std::get<ClassPtr>(*superclass));
+        env_ = env_->enclosing();
+        env_->assign(stmt.name, std::move(klass));
+        return std::nullopt;
+    }
     env_->assign(stmt.name, std::make_shared<Class>(stmt.name.lexeme(), std::move(methods)));
     return std::nullopt;
 }

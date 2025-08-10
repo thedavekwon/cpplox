@@ -120,6 +120,6 @@ struct std::formatter<cpplox::Token> {
 
     template<typename FormatContext>
     auto format(const cpplox::Token& t, FormatContext& ctx) const {
-        return std::format_to(ctx.out(), "{} {} {}", t.type(), t.lexeme(), t.line());
+        return std::format_to(ctx.out(), "{} {}", t.type(), t.lexeme());
     }
 };

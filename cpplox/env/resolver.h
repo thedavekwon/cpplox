@@ -23,6 +23,7 @@ private:
     enum class ClassType {
         None,
         CLASS,
+        SUBCLASS,
     };
 
 public:
@@ -36,6 +37,7 @@ public:
     void operator()(const LiteralExpr& expr);
     void operator()(const LogicalExpr& expr);
     void operator()(const SetExpr& expr);
+    void operator()(const SuperExpr& expr);
     void operator()(const ThisExpr& expr);
     void operator()(const UnaryExpr& expr);
     void operator()(const VarExpr& expr);
@@ -67,6 +69,7 @@ private:
 
     void resolveFunction(const FunctionStatement& stmt, FunctionType funcType);
 
+    void scopeGuard();
     void beginScope();
     void endScope();
 

@@ -18,6 +18,8 @@ LogicalExpr::LogicalExpr(Expr l, Token o, Expr r) : left(std::make_unique<Expr>(
 
 SetExpr::SetExpr(Expr o, Token n, Expr v) : object(std::make_unique<Expr>(std::move(o))), name(std::move(n)), value(std::make_unique<Expr>(std::move(v))) {}
 
+SuperExpr::SuperExpr(Token k, Token m) : keyword(std::move(k)), method(std::move(m)) {}
+
 ThisExpr::ThisExpr(Token keyword) : keyword(std::move(keyword)) {}
 
 UnaryExpr::UnaryExpr(Token o, Expr r) : op(std::move(o)), right(std::make_unique<Expr>(std::move(r))) {}
